@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Zambon - Admin · Componentes y pesos</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- ===== Zambon OS shared theme (source: /shared/zambon-theme.js) ===== -->
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          "background": "#121414", "on-background": "#e2e2e2", "surface": "#121414",
+          "surface-dim": "#121414", "surface-bright": "#37393a",
+          "surface-container-lowest": "#0c0f0f", "surface-container-low": "#1a1c1c",
+          "surface-container": "#1e2020", "surface-container-high": "#282a2b",
+          "surface-container-highest": "#333535", "surface-variant": "#333535",
+          "on-surface": "#e2e2e2", "on-surface-variant": "#c8c8ae",
+          "inverse-surface": "#e2e2e2", "inverse-on-surface": "#2f3131", "surface-tint": "#c5cf1b",
+          "primary": "#dfea3a", "on-primary": "#303300", "primary-container": "#c3cd17",
+          "on-primary-container": "#505500", "primary-fixed": "#e1ec3d", "primary-fixed-dim": "#c5cf1b",
+          "on-primary-fixed": "#1b1d00", "on-primary-fixed-variant": "#464a00", "inverse-primary": "#5e6300",
+          "secondary": "#c2c7ce", "on-secondary": "#2c3136", "secondary-container": "#42474d",
+          "on-secondary-container": "#b1b5bc", "secondary-fixed": "#dee3ea", "secondary-fixed-dim": "#c2c7ce",
+          "on-secondary-fixed": "#171c21", "on-secondary-fixed-variant": "#42474d",
+          "tertiary": "#dae1eb", "on-tertiary": "#2a3139", "tertiary-container": "#bec5cf",
+          "on-tertiary-container": "#4b525a", "tertiary-fixed": "#dce3ed", "tertiary-fixed-dim": "#c0c7d1",
+          "on-tertiary-fixed": "#151c24", "on-tertiary-fixed-variant": "#404750",
+          "outline": "#92927a", "outline-variant": "#474834", "error": "#ffb4ab",
+          "on-error": "#690005", "error-container": "#93000a", "on-error-container": "#ffdad6"
+        },
+        borderRadius: { "DEFAULT": "0.5rem", "sm": "0.25rem", "md": "0.75rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px" },
+        spacing: { "unit": "4px", "xs": "0.5rem", "sm": "1rem", "md": "1.5rem", "lg": "2.5rem", "xl": "4rem", "gutter": "24px", "margin": "32px" },
+        fontFamily: { "display-xl": ["Poppins"], "headline-lg": ["Poppins"], "headline-md": ["Poppins"], "body-lg": ["Poppins"], "body-md": ["Poppins"], "label-bold": ["Poppins"], "label-sm": ["Poppins"], "mono": ["JetBrains Mono", "monospace"] },
+        fontSize: {
+          "display-xl": ["48px", { lineHeight: "1.1", letterSpacing: "-0.04em", fontWeight: "700" }],
+          "headline-lg": ["32px", { lineHeight: "1.2", letterSpacing: "-0.03em", fontWeight: "600" }],
+          "headline-md": ["24px", { lineHeight: "1.2", letterSpacing: "-0.02em", fontWeight: "600" }],
+          "body-lg": ["18px", { lineHeight: "1.6", letterSpacing: "-0.01em", fontWeight: "400" }],
+          "body-md": ["16px", { lineHeight: "1.5", letterSpacing: "-0.01em", fontWeight: "400" }],
+          "label-bold": ["14px", { lineHeight: "1.2", letterSpacing: "0.02em", fontWeight: "600" }],
+          "label-sm": ["12px", { lineHeight: "1.2", letterSpacing: "0.01em", fontWeight: "500" }]
+        },
+        zIndex: { "dropdown": "1000", "sticky": "1100", "modal-backdrop": "1200", "modal": "1300", "toast": "1400", "tooltip": "1500" }
+      }
+    }
+  }
+</script>
+<!-- ===== Zambon OS shared base (source: /shared/zambon-base.html) ===== -->
+<style id="zambon-base">
+  :root { --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); }
+  body { background-color: #121414; color: #e2e2e2; }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #333535; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #474834; }
+  .glass-card { background: rgba(30,32,32,0.6); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.06); transition: border-color 200ms var(--ease-out), transform 200ms var(--ease-out); }
+  .glow-lime { box-shadow: 0 0 20px rgba(195,205,23,0.15); }
+  .z-sidebar { position: fixed; left: 0; top: 0; height: 100vh; width: 16rem; display: flex; flex-direction: column; padding: 2rem 0; background: rgba(30,32,32,0.6); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-right: 1px solid rgba(255,255,255,0.06); z-index: 1100; }
+  .z-nav-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1.5rem; color: #c8c8ae; font-family: Poppins; font-weight: 500; font-size: 14px; position: relative; transition: color 150ms ease, background-color 150ms ease; }
+  .z-nav-item .material-symbols-outlined { font-size: 20px; }
+  .z-nav-item:active { transform: scale(0.97); }
+  .z-nav-item--active { color: #c3cd17; background: rgba(195,205,23,0.12); font-weight: 600; }
+  .z-nav-item--active::before { content: ""; position: absolute; left: 0; top: 0.5rem; bottom: 0.5rem; width: 3px; border-radius: 0 3px 3px 0; background: #c3cd17; }
+  @media (hover: hover) and (pointer: fine) { .z-nav-item:not(.z-nav-item--active):hover { color: #e2e2e2; background: rgba(255,255,255,0.05); } }
+  .z-topbar { display: flex; align-items: center; justify-content: space-between; width: 100%; height: 4rem; padding: 0 2rem; position: sticky; top: 0; background: rgba(12,15,15,0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.06); z-index: 1100; }
+  .z-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.625rem 1.5rem; border-radius: 1rem; font-family: Poppins; font-weight: 600; font-size: 14px; letter-spacing: 0.02em; cursor: pointer; white-space: nowrap; transition: background-color 160ms var(--ease-out), color 160ms var(--ease-out), border-color 160ms var(--ease-out), transform 160ms var(--ease-out); }
+  .z-btn:active { transform: scale(0.97); }
+  .z-btn--primary { background: #c3cd17; color: #303300; border: 1px solid transparent; }
+  .z-btn--secondary { background: transparent; color: #e2e2e2; border: 1px solid #c3cd17; }
+  .z-btn--ghost { background: rgba(255,255,255,0.05); color: #e2e2e2; border: 1px solid transparent; }
+  .z-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  @media (hover: hover) and (pointer: fine) { .z-btn--primary:hover { background: #dfea3a; } .z-btn--secondary:hover { background: rgba(195,205,23,0.08); } .z-btn--ghost:hover { background: rgba(255,255,255,0.1); } }
+  .z-pill { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.125rem 0.625rem; border-radius: 9999px; font-family: Poppins; font-weight: 500; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .z-pill--active { background: rgba(195,205,23,0.2); border: 1px solid rgba(195,205,23,0.3); color: #c3cd17; }
+  .z-pill--muted { background: #333535; border: 1px solid #474834; color: #c8c8ae; }
+  .z-pill--error { background: rgba(147,0,10,0.25); border: 1px solid rgba(255,180,171,0.3); color: #ffb4ab; }
+  .z-input { width: 100%; background: rgba(26,28,28,0.5); color: #e2e2e2; border: none; border-bottom: 2px solid #474834; border-radius: 0.5rem 0.5rem 0 0; padding: 0.5rem 0.75rem; font-family: Poppins; font-size: 16px; transition: border-color 200ms ease; }
+  .z-input::placeholder { color: #92927a; }
+  .z-input:focus { outline: none; border-bottom-color: #c3cd17; box-shadow: none; }
+  .z-rise { animation: z-rise 300ms var(--ease-out) both; }
+  .z-rise-1 { animation-delay: 40ms; } .z-rise-2 { animation-delay: 80ms; } .z-rise-3 { animation-delay: 120ms; }
+  @keyframes z-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } .z-btn:active, .z-nav-item:active { transform: none; } }
+
+  /* ===== Admin shared ===== */
+  .mono { font-family: 'JetBrains Mono'; }
+  .num-cell { font-family: 'JetBrains Mono'; font-variant-numeric: tabular-nums; }
+  .sub-nav { display: flex; flex-direction: column; gap: 0.125rem; }
+  .sub-nav__item { display: flex; align-items: center; gap: 0.625rem; padding: 0.55rem 0.75rem; border-radius: 0.625rem; font-size: 13.5px; color: #c8c8ae; cursor: pointer; transition: background 150ms ease, color 150ms ease; }
+  .sub-nav__item .material-symbols-outlined { font-size: 18px; }
+  .sub-nav__item:hover { background: rgba(255,255,255,0.04); color: #e2e2e2; }
+  .sub-nav__item--active { background: rgba(195,205,23,0.12); color: #c3cd17; font-weight: 600; }
+  .sub-nav__group { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #92927a; padding: 0.75rem 0.75rem 0.35rem; font-weight: 600; }
+  .cell-input { width: 5.5rem; background: transparent; color: #e2e2e2; border: 1px solid transparent; border-radius: 0.4rem; padding: 0.3rem 0.45rem; font-family: 'JetBrains Mono'; font-size: 14px; text-align: right; transition: border-color 150ms ease, background 150ms ease; }
+  .cell-input:hover { border-color: rgba(255,255,255,0.1); }
+  .cell-input:focus { outline: none; border-color: #c3cd17; background: rgba(195,205,23,0.06); }
+  /* barra de suma de pesos */
+  .weight-bar { height: 10px; border-radius: 9999px; background: #282a2b; overflow: hidden; display: flex; }
+  .weight-seg { height: 100%; }
+</style>
+</head>
+<body class="bg-background text-on-surface font-['Poppins'] antialiased min-h-screen flex">
+<!-- ===== Sidebar principal — Admin activo ===== -->
+<aside class="z-sidebar hidden md:flex">
+<div class="px-6 mb-10">
+<h1 class="text-xl font-black tracking-tighter text-primary-container font-['Poppins']">Zambon</h1>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Motor de Incentivos</p>
+</div>
+<nav class="flex-1 flex flex-col gap-1">
+<a class="z-nav-item" href="../home/code.html"><span class="material-symbols-outlined">dashboard</span>Inicio</a>
+<a class="z-nav-item" href="../calculof/code.html"><span class="material-symbols-outlined">calculate</span>Cálculo</a>
+<a class="z-nav-item" href="../resultsf/code.html"><span class="material-symbols-outlined">analytics</span>Resultados</a>
+<a class="z-nav-item" href="../reportesf/code.html"><span class="material-symbols-outlined">description</span>Reportes</a>
+<a aria-current="page" class="z-nav-item z-nav-item--active" href="../adminf/code.html"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">admin_panel_settings</span>Admin</a>
+</nav>
+<div class="px-6 mt-auto pt-6 border-t border-white/5">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high border border-white/10 flex items-center justify-center overflow-hidden shrink-0"><span class="material-symbols-outlined text-on-surface-variant text-[20px]">person</span></div>
+<div class="overflow-hidden"><p data-user-name class="font-label-bold text-label-bold text-on-surface truncate">—</p><p data-user-role class="font-label-sm text-label-sm text-on-surface-variant truncate">—</p></div>
+</div>
+</div>
+</aside>
+<main class="flex-1 md:ml-64 flex flex-col min-w-0">
+<!-- ===== Top bar ===== -->
+<header class="z-topbar">
+<nav class="flex items-center gap-1.5 text-sm text-on-surface-variant">
+<a href="../adminf/code.html" class="hover:text-on-surface transition-colors">Admin</a>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+<span class="text-on-surface">Componentes y pesos</span>
+</nav>
+<div class="flex items-center gap-4">
+<button class="p-2 text-on-surface-variant hover:text-primary-container transition-colors relative"><span class="material-symbols-outlined">notifications</span><span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span></button>
+<button class="p-2 text-on-surface-variant hover:text-primary-container transition-colors"><span class="material-symbols-outlined">settings</span></button>
+<div class="w-8 h-8 rounded-full bg-surface-container-high border border-white/10 flex items-center justify-center overflow-hidden"><span class="material-symbols-outlined text-on-surface-variant text-sm">person</span></div>
+</div>
+</header>
+
+<div class="p-margin flex gap-8 max-w-[1500px] mx-auto w-full">
+
+<!-- ===== Menú secundario de Admin ===== -->
+<aside class="w-56 shrink-0 hidden lg:block z-rise">
+<div class="glass-card rounded-xl p-3 sticky top-24">
+<div class="sub-nav">
+<p class="sub-nav__group">Organización</p>
+<a class="sub-nav__item" href="empleados.html"><span class="material-symbols-outlined">badge</span>Empleados</a>
+<a class="sub-nav__item" href="usuarios.html"><span class="material-symbols-outlined">manage_accounts</span>Usuarios y roles</a>
+<a class="sub-nav__item" href="estructura.html"><span class="material-symbols-outlined">workspaces</span>Estructura</a>
+<a class="sub-nav__item" href="jerarquia.html"><span class="material-symbols-outlined">account_tree</span>Jerarquía</a>
+<p class="sub-nav__group">Parámetros</p>
+<a class="sub-nav__item" href="periodos.html"><span class="material-symbols-outlined">calendar_month</span>Periodos</a>
+<a class="sub-nav__item sub-nav__item--active" href="pesos.html"><span class="material-symbols-outlined">pie_chart</span>Componentes y pesos</a>
+<a class="sub-nav__item" href="curva.html"><span class="material-symbols-outlined">show_chart</span>Curva de pago</a>
+<a class="sub-nav__item" href="cuotas.html"><span class="material-symbols-outlined">target</span>Cuotas</a>
+<p class="sub-nav__group">Gobierno</p>
+<a class="sub-nav__item" href="novedades.html"><span class="material-symbols-outlined">event_busy</span>Novedades</a>
+<a class="sub-nav__item" href="garantizado.html"><span class="material-symbols-outlined">shield</span>Pago garantizado</a>
+<a class="sub-nav__item" href="reprocesos.html"><span class="material-symbols-outlined">restart_alt</span>Reprocesos</a>
+<a class="sub-nav__item" href="auditoria.html"><span class="material-symbols-outlined">history</span>Auditoría</a>
+</div>
+</div>
+</aside>
+
+<!-- ===== Contenido: Componentes y pesos ===== -->
+<div class="flex-1 min-w-0 flex flex-col gap-6">
+
+<div class="flex flex-col md:flex-row md:justify-between md:items-end gap-4 z-rise">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Componentes y pesos</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Peso de cada componente por equipo y ciclo. Los pesos de un equipo deben sumar 100%.</p>
+</div>
+</div>
+
+<!-- Selectores de contexto (teamId + periodId) -->
+<div class="glass-card rounded-xl p-5 z-rise z-rise-1">
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+<label class="flex flex-col gap-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Equipo</span>
+<select id="sel-team" class="z-input text-sm"><option value="">Selecciona…</option></select>
+</label>
+<label class="flex flex-col gap-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Ciclo / periodo</span>
+<select id="sel-period" class="z-input text-sm"><option value="">Selecciona…</option></select>
+</label>
+<div class="flex items-center gap-2 pb-1">
+<span id="comp-count" class="z-pill z-pill--muted">—</span>
+</div>
+</div>
+</div>
+
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+
+<!-- Editor de pesos (team_component_weight) -->
+<div class="xl:col-span-7 glass-card rounded-xl p-6 z-rise z-rise-2">
+<div class="flex items-center justify-between mb-4">
+<h4 class="font-label-bold text-label-bold text-on-surface uppercase tracking-wider">Pesos por componente</h4>
+<button id="btn-add-comp" class="z-btn z-btn--ghost !py-1.5 !px-3 !text-xs"><span class="material-symbols-outlined text-[16px]">add</span>Nuevo componente</button>
+</div>
+<div class="overflow-x-auto -mx-2">
+<table class="w-full min-w-[420px] text-left text-sm">
+<thead>
+<tr class="text-[11px] uppercase tracking-wider text-on-surface-variant border-b border-white/5">
+<th class="font-label-bold py-2.5 px-2">Componente</th>
+<th class="font-label-bold py-2.5 px-2">Código</th>
+<th class="font-label-bold py-2.5 px-2 text-right">Peso (0–1)</th>
+</tr>
+</thead>
+<tbody id="weights-body">
+<!-- una fila por componente activo; peso editable -->
+</tbody>
+</table>
+</div>
+<p id="weights-empty" class="hidden text-label-sm text-on-surface-variant mt-3">— Selecciona equipo y periodo para editar pesos.</p>
+</div>
+
+<!-- Validación suma = 100% -->
+<div class="xl:col-span-5 flex flex-col gap-6">
+<div class="glass-card rounded-xl p-6 z-rise z-rise-2">
+<h4 class="font-label-bold text-label-bold text-on-surface uppercase tracking-wider mb-4">Suma de pesos</h4>
+<div class="flex items-end justify-between mb-2">
+<span id="sum-value" class="num-cell text-headline-lg text-primary-container">—</span>
+<span id="sum-pill" class="z-pill z-pill--muted">—</span>
+</div>
+<div class="weight-bar mb-3" id="sum-bar"></div>
+<p class="text-label-sm text-on-surface-variant mt-4 flex items-start gap-1.5"><span class="material-symbols-outlined text-[15px] mt-px">info</span>El botón Guardar se bloquea si la suma ≠ 1.0 (el backend responde 422).</p>
+</div>
+</div>
+
+<!-- Barra de guardado -->
+<div class="glass-card rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 z-rise z-rise-3">
+<p class="text-label-sm text-on-surface-variant flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px]">info</span>Los pesos reemplazan los del equipo/periodo. Se registra en auditoría.</p>
+<div class="flex gap-3">
+<button id="btn-reload" class="z-btn z-btn--ghost">Descartar</button>
+<button id="btn-save" class="z-btn z-btn--primary glow-lime" disabled><span class="material-symbols-outlined text-[18px]">save</span>Guardar pesos</button>
+</div>
+</div>
+
+</div>
+</div>
+</main>
+
+<!-- ===== Modal: nuevo componente ===== -->
+<div id="modal-comp" class="hidden fixed inset-0 z-[1300] items-center justify-center p-4" style="background:rgba(0,0,0,.6);backdrop-filter:blur(4px)">
+<div class="glass-card rounded-xl p-6 w-full max-w-md" style="background:#1e2020">
+<div class="flex items-center justify-between mb-5">
+<h3 class="font-headline-md text-headline-md text-on-surface">Nuevo componente</h3>
+<button id="mc-close" class="p-1 text-on-surface-variant hover:text-on-surface"><span class="material-symbols-outlined">close</span></button>
+</div>
+<div class="flex flex-col gap-4">
+<label class="flex flex-col gap-1"><span class="font-label-sm text-label-sm text-on-surface-variant">Código (único)</span><input id="mc-code" type="text" class="z-input text-sm" placeholder="MEDICINE"/></label>
+<label class="flex flex-col gap-1"><span class="font-label-sm text-label-sm text-on-surface-variant">Nombre</span><input id="mc-name" type="text" class="z-input text-sm" placeholder="Medicamentos"/></label>
+<label class="flex flex-col gap-1"><span class="font-label-sm text-label-sm text-on-surface-variant">Tipo</span>
+<select id="mc-type" class="z-input text-sm">
+<option value="MEDICINE">MEDICINE</option><option value="ORDER_TAKING">ORDER_TAKING</option>
+<option value="SELL_OUT">SELL_OUT</option><option value="INSTALLATION">INSTALLATION</option><option value="OTHER">OTHER</option>
+</select></label>
+<p id="mc-error" class="hidden items-center gap-2 text-error text-label-sm"><span class="material-symbols-outlined text-[16px]">error</span><span id="mc-error-msg"></span></p>
+<div class="flex justify-end gap-3 mt-2">
+<button id="mc-cancel" class="z-btn z-btn--ghost">Cancelar</button>
+<button id="mc-save" class="z-btn z-btn--primary">Crear</button>
+</div>
+</div>
+</div>
+</div>
+
+<script src="../shared/api.js"></script>
+<script>
+(function () {
+  if (!ZambonAPI.requireAuth()) return;
+  var A = ZambonAPI; A.fillSidebar();
+  var el = function (id) { return document.getElementById(id); };
+  var TOL = 0.000001;
+
+  var state = { teamId: '', periodId: '', components: [] };
+
+  // ---- Carga inicial de selectores ----
+  (async function init() {
+    try {
+      var teams = await A.get('/teams');
+      teams.forEach(function (t) { addOpt('sel-team', t.teamId, t.teamName); });
+    } catch (e) {}
+    try {
+      var periods = await A.get('/periods');
+      periods.forEach(function (p) {
+        addOpt('sel-period', p.periodId, p.periodYear + '-' + String(p.periodMonth).padStart(2, '0') + (p.periodType === 'CYCLE' ? ' · Ciclo' : ''));
+      });
+    } catch (e) {}
+  })();
+
+  function addOpt(selId, val, label) {
+    var o = document.createElement('option'); o.value = val; o.textContent = label;
+    el(selId).appendChild(o);
+  }
+
+  el('sel-team').addEventListener('change', function (e) { state.teamId = e.target.value; refresh(); });
+  el('sel-period').addEventListener('change', function (e) { state.periodId = e.target.value; refresh(); });
+
+  // ---- Carga componentes + pesos existentes ----
+  async function refresh() {
+    var body = el('weights-body');
+    if (!state.teamId || !state.periodId) {
+      body.innerHTML = ''; el('weights-empty').classList.remove('hidden');
+      el('btn-save').disabled = true; el('comp-count').textContent = '—';
+      setSum(null); return;
+    }
+    el('weights-empty').classList.add('hidden');
+    body.innerHTML = '<tr><td colspan="3" class="py-4 text-center text-on-surface-variant text-sm">Cargando…</td></tr>';
+    try {
+      var comps = await A.get('/components');
+      state.components = comps;
+      el('comp-count').textContent = comps.length + ' componentes';
+      var existing = await A.get('/component-weights?teamId=' + encodeURIComponent(state.teamId) + '&periodId=' + encodeURIComponent(state.periodId));
+      var wByComp = {};
+      (existing || []).forEach(function (w) { wByComp[w.componentId] = Number(w.weightPercent); });
+      renderRows(comps, wByComp);
+    } catch (e) {
+      body.innerHTML = '<tr><td colspan="3" class="py-4 text-center text-on-surface-variant text-sm">— No se pudieron cargar los pesos.</td></tr>';
+    }
+  }
+
+  function renderRows(comps, wByComp) {
+    var body = el('weights-body');
+    body.innerHTML = '';
+    if (!comps.length) {
+      body.innerHTML = '<tr><td colspan="3" class="py-4 text-center text-on-surface-variant text-sm">— No hay componentes. Crea el primero.</td></tr>';
+      setSum(0); return;
+    }
+    comps.forEach(function (c) {
+      var val = wByComp[c.componentId] != null ? wByComp[c.componentId] : 0;
+      var tr = document.createElement('tr');
+      tr.className = 'border-b border-white/5';
+      tr.innerHTML =
+        '<td class="py-2.5 px-2 text-on-surface">' + A.escapeHtml(c.componentName) + '</td>' +
+        '<td class="py-2.5 px-2"><span class="z-pill z-pill--muted">' + A.escapeHtml(c.componentCode) + '</span></td>' +
+        '<td class="py-2.5 px-2 text-right"><input data-comp="' + c.componentId + '" type="number" step="0.01" min="0" max="1" class="cell-input" value="' + val + '"/></td>';
+      body.appendChild(tr);
+    });
+    body.querySelectorAll('input[data-comp]').forEach(function (inp) {
+      inp.addEventListener('input', recompute);
+    });
+    recompute();
+  }
+
+  function currentWeights() {
+    return Array.prototype.map.call(document.querySelectorAll('#weights-body input[data-comp]'), function (inp) {
+      return { componentId: inp.dataset.comp, weightPercent: parseFloat(inp.value) || 0 };
+    });
+  }
+
+  function recompute() {
+    var sum = currentWeights().reduce(function (a, w) { return a + w.weightPercent; }, 0);
+    setSum(sum);
+  }
+
+  function setSum(sum) {
+    var val = el('sum-value'), pill = el('sum-pill'), bar = el('sum-bar'), save = el('btn-save');
+    if (sum == null) { val.textContent = '—'; pill.textContent = '—'; pill.className = 'z-pill z-pill--muted'; bar.innerHTML = ''; save.disabled = true; return; }
+    val.textContent = (sum * 100).toFixed(0) + '%';
+    var ok = Math.abs(sum - 1) <= TOL;
+    if (ok) { pill.innerHTML = '<span class="material-symbols-outlined text-[13px]">check</span>Válido'; pill.className = 'z-pill z-pill--active'; val.className = 'num-cell text-headline-lg text-primary-container'; }
+    else { pill.textContent = sum > 1 ? ('Sobra ' + ((sum - 1) * 100).toFixed(0) + '%') : ('Falta ' + ((1 - sum) * 100).toFixed(0) + '%'); pill.className = 'z-pill z-pill--error'; val.className = 'num-cell text-headline-lg text-error'; }
+    // barra
+    bar.innerHTML = '';
+    currentWeights().forEach(function (w, i) {
+      if (w.weightPercent <= 0) return;
+      var seg = document.createElement('div');
+      seg.className = 'weight-seg';
+      seg.style.cssText = 'width:' + Math.min(w.weightPercent * 100, 100) + '%;background:' + (i % 2 ? '#5e6300' : '#c3cd17');
+      bar.appendChild(seg);
+    });
+    save.disabled = !ok;
+  }
+
+  // ---- Guardar pesos ----
+  el('btn-save').addEventListener('click', async function () {
+    var weights = currentWeights().filter(function (w) { return w.weightPercent > 0; });
+    try {
+      await A.put('/component-weights', { teamId: state.teamId, periodId: state.periodId, weights: weights });
+      A.toast('Pesos guardados.');
+      refresh();
+    } catch (e) {
+      A.toast(e.message || 'No se pudieron guardar los pesos.', 'error');
+    }
+  });
+  el('btn-reload').addEventListener('click', refresh);
+
+  // ---- Modal nuevo componente ----
+  el('btn-add-comp').addEventListener('click', function () { el('modal-comp').classList.remove('hidden'); el('modal-comp').classList.add('flex'); });
+  function closeMc() { el('modal-comp').classList.add('hidden'); el('modal-comp').classList.remove('flex'); el('mc-error').classList.add('hidden'); }
+  el('mc-close').addEventListener('click', closeMc);
+  el('mc-cancel').addEventListener('click', closeMc);
+  el('mc-save').addEventListener('click', async function () {
+    var code = el('mc-code').value.trim().toUpperCase(), name = el('mc-name').value.trim(), type = el('mc-type').value;
+    if (!code || !name) { el('mc-error-msg').textContent = 'Código y nombre son obligatorios.'; el('mc-error').classList.remove('hidden'); el('mc-error').classList.add('flex'); return; }
+    try {
+      await A.post('/components', { componentCode: code, componentName: name, componentType: type });
+      A.toast('Componente ' + code + ' creado.');
+      closeMc();
+      refresh();
+    } catch (e) {
+      el('mc-error-msg').textContent = e.message || 'No se pudo crear.'; el('mc-error').classList.remove('hidden'); el('mc-error').classList.add('flex');
+    }
+  });
+})();
+</script>
+</body></html>

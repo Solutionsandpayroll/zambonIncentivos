@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Zambon - Inicio</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- ===== Zambon OS shared theme (source: /shared/zambon-theme.js) ===== -->
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          "background": "#121414", "on-background": "#e2e2e2", "surface": "#121414",
+          "surface-dim": "#121414", "surface-bright": "#37393a",
+          "surface-container-lowest": "#0c0f0f", "surface-container-low": "#1a1c1c",
+          "surface-container": "#1e2020", "surface-container-high": "#282a2b",
+          "surface-container-highest": "#333535", "surface-variant": "#333535",
+          "on-surface": "#e2e2e2", "on-surface-variant": "#c8c8ae",
+          "inverse-surface": "#e2e2e2", "inverse-on-surface": "#2f3131", "surface-tint": "#c5cf1b",
+          "primary": "#dfea3a", "on-primary": "#303300", "primary-container": "#c3cd17",
+          "on-primary-container": "#505500", "primary-fixed": "#e1ec3d", "primary-fixed-dim": "#c5cf1b",
+          "on-primary-fixed": "#1b1d00", "on-primary-fixed-variant": "#464a00", "inverse-primary": "#5e6300",
+          "secondary": "#c2c7ce", "on-secondary": "#2c3136", "secondary-container": "#42474d",
+          "on-secondary-container": "#b1b5bc", "secondary-fixed": "#dee3ea", "secondary-fixed-dim": "#c2c7ce",
+          "on-secondary-fixed": "#171c21", "on-secondary-fixed-variant": "#42474d",
+          "tertiary": "#dae1eb", "on-tertiary": "#2a3139", "tertiary-container": "#bec5cf",
+          "on-tertiary-container": "#4b525a", "tertiary-fixed": "#dce3ed", "tertiary-fixed-dim": "#c0c7d1",
+          "on-tertiary-fixed": "#151c24", "on-tertiary-fixed-variant": "#404750",
+          "outline": "#92927a", "outline-variant": "#474834", "error": "#ffb4ab",
+          "on-error": "#690005", "error-container": "#93000a", "on-error-container": "#ffdad6"
+        },
+        borderRadius: { "DEFAULT": "0.5rem", "sm": "0.25rem", "md": "0.75rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px" },
+        spacing: { "unit": "4px", "xs": "0.5rem", "sm": "1rem", "md": "1.5rem", "lg": "2.5rem", "xl": "4rem", "gutter": "24px", "margin": "32px" },
+        fontFamily: { "display-xl": ["Poppins"], "headline-lg": ["Poppins"], "headline-md": ["Poppins"], "body-lg": ["Poppins"], "body-md": ["Poppins"], "label-bold": ["Poppins"], "label-sm": ["Poppins"] },
+        fontSize: {
+          "display-xl": ["48px", { lineHeight: "1.1", letterSpacing: "-0.04em", fontWeight: "700" }],
+          "headline-lg": ["32px", { lineHeight: "1.2", letterSpacing: "-0.03em", fontWeight: "600" }],
+          "headline-md": ["24px", { lineHeight: "1.2", letterSpacing: "-0.02em", fontWeight: "600" }],
+          "body-lg": ["18px", { lineHeight: "1.6", letterSpacing: "-0.01em", fontWeight: "400" }],
+          "body-md": ["16px", { lineHeight: "1.5", letterSpacing: "-0.01em", fontWeight: "400" }],
+          "label-bold": ["14px", { lineHeight: "1.2", letterSpacing: "0.02em", fontWeight: "600" }],
+          "label-sm": ["12px", { lineHeight: "1.2", letterSpacing: "0.01em", fontWeight: "500" }]
+        },
+        zIndex: { "dropdown": "1000", "sticky": "1100", "modal-backdrop": "1200", "modal": "1300", "toast": "1400", "tooltip": "1500" }
+      }
+    }
+  }
+</script>
+<!-- ===== Zambon OS shared base (source: /shared/zambon-base.html) ===== -->
+<style id="zambon-base">
+  :root { --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); }
+  body { background-color: #121414; color: #e2e2e2; }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #333535; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #474834; }
+  .glass-card { background: rgba(30,32,32,0.6); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.06); transition: border-color 200ms var(--ease-out), transform 200ms var(--ease-out); }
+  .glow-lime { box-shadow: 0 0 20px rgba(195,205,23,0.15); }
+  .z-sidebar { position: fixed; left: 0; top: 0; height: 100vh; width: 16rem; display: flex; flex-direction: column; padding: 2rem 0; background: rgba(30,32,32,0.6); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-right: 1px solid rgba(255,255,255,0.06); z-index: 1100; }
+  .z-nav-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1.5rem; color: #c8c8ae; font-family: Poppins; font-weight: 500; font-size: 14px; position: relative; transition: color 150ms ease, background-color 150ms ease; }
+  .z-nav-item .material-symbols-outlined { font-size: 20px; }
+  .z-nav-item:active { transform: scale(0.97); }
+  .z-nav-item--active { color: #c3cd17; background: rgba(195,205,23,0.12); font-weight: 600; }
+  .z-nav-item--active::before { content: ""; position: absolute; left: 0; top: 0.5rem; bottom: 0.5rem; width: 3px; border-radius: 0 3px 3px 0; background: #c3cd17; }
+  @media (hover: hover) and (pointer: fine) { .z-nav-item:not(.z-nav-item--active):hover { color: #e2e2e2; background: rgba(255,255,255,0.05); } }
+  .z-topbar { display: flex; align-items: center; justify-content: space-between; width: 100%; height: 4rem; padding: 0 2rem; position: sticky; top: 0; background: rgba(12,15,15,0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.06); z-index: 1100; }
+  .z-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.625rem 1.5rem; border-radius: 1rem; font-family: Poppins; font-weight: 600; font-size: 14px; letter-spacing: 0.02em; cursor: pointer; white-space: nowrap; transition: background-color 160ms var(--ease-out), color 160ms var(--ease-out), border-color 160ms var(--ease-out), transform 160ms var(--ease-out); }
+  .z-btn:active { transform: scale(0.97); }
+  .z-btn--primary { background: #c3cd17; color: #303300; border: 1px solid transparent; }
+  .z-btn--secondary { background: transparent; color: #e2e2e2; border: 1px solid #c3cd17; }
+  .z-btn--ghost { background: rgba(255,255,255,0.05); color: #e2e2e2; border: 1px solid transparent; }
+  .z-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  @media (hover: hover) and (pointer: fine) { .z-btn--primary:hover { background: #dfea3a; } .z-btn--secondary:hover { background: rgba(195,205,23,0.08); } .z-btn--ghost:hover { background: rgba(255,255,255,0.1); } }
+  .z-pill { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.125rem 0.625rem; border-radius: 9999px; font-family: Poppins; font-weight: 500; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .z-pill--active { background: rgba(195,205,23,0.2); border: 1px solid rgba(195,205,23,0.3); color: #c3cd17; }
+  .z-pill--muted { background: #333535; border: 1px solid #474834; color: #c8c8ae; }
+  .z-pill--error { background: rgba(147,0,10,0.25); border: 1px solid rgba(255,180,171,0.3); color: #ffb4ab; }
+  .z-pill--pulse::before { content: ""; width: 6px; height: 6px; border-radius: 9999px; background: currentColor; animation: z-pulse 1.4s ease-in-out infinite; }
+  @keyframes z-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+  .z-progress { height: 8px; width: 100%; background: #282a2b; border-radius: 9999px; overflow: hidden; }
+  .z-progress__fill { height: 100%; background: #c3cd17; border-radius: 9999px; transform-origin: left; animation: z-grow 600ms var(--ease-out) both; }
+  @keyframes z-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+  .z-input { width: 100%; background: rgba(26,28,28,0.5); color: #e2e2e2; border: none; border-bottom: 2px solid #474834; border-radius: 0.5rem 0.5rem 0 0; padding: 0.5rem 0.75rem; font-family: Poppins; font-size: 16px; transition: border-color 200ms ease; }
+  .z-input::placeholder { color: #92927a; }
+  .z-input:focus { outline: none; border-bottom-color: #c3cd17; box-shadow: none; }
+  .z-rise { animation: z-rise 300ms var(--ease-out) both; }
+  .z-rise-1 { animation-delay: 40ms; } .z-rise-2 { animation-delay: 80ms; } .z-rise-3 { animation-delay: 120ms; } .z-rise-4 { animation-delay: 160ms; }
+  @keyframes z-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @media (hover: hover) and (pointer: fine) { .glass-card--interactive:hover { border-color: rgba(195,205,23,0.3); transform: translateY(-2px); } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } .glass-card--interactive:hover, .z-btn:active, .z-nav-item:active { transform: none; } }
+</style>
+</head>
+<body class="bg-background text-on-surface font-['Poppins'] antialiased min-h-screen flex">
+<!-- ===== Sidebar — navegación en español, según rol (aquí: NOMINA/ADMIN) ===== -->
+<aside class="z-sidebar hidden md:flex">
+<div class="px-6 mb-10">
+<h1 class="text-xl font-black tracking-tighter text-primary-container font-['Poppins']">Zambon</h1>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Motor de Incentivos</p>
+</div>
+<nav class="flex-1 flex flex-col gap-1">
+<a aria-current="page" class="z-nav-item z-nav-item--active" href="../home/code.html">
+<span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">dashboard</span>Inicio
+</a>
+<a class="z-nav-item" href="../calculof/code.html">
+<span class="material-symbols-outlined">calculate</span>Cálculo
+</a>
+<a class="z-nav-item" href="../resultsf/code.html">
+<span class="material-symbols-outlined">analytics</span>Resultados
+</a>
+<a class="z-nav-item" href="../reportesf/code.html">
+<span class="material-symbols-outlined">description</span>Reportes
+</a>
+<a class="z-nav-item" href="../adminf/code.html">
+<span class="material-symbols-outlined">admin_panel_settings</span>Admin
+</a>
+</nav>
+<!-- Perfil real — de GET /auth/me (fullName + rol) -->
+<div class="px-6 mt-auto pt-6 border-t border-white/5">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">person</span>
+</div>
+<div class="overflow-hidden">
+<p class="font-label-bold text-label-bold text-on-surface truncate" data-bind="user.fullName">Diana Guerrero</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant truncate" data-bind="user.roleLabel">Nómina</p>
+</div>
+</div>
+</div>
+</aside>
+<main class="flex-1 md:ml-64 flex flex-col min-w-0">
+<!-- ===== Top bar — búsqueda contextual (empleado por cédula/nombre) ===== -->
+<header class="z-topbar">
+<div class="relative w-full max-w-md group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-primary-container transition-colors">search</span>
+<input class="z-input pl-10 text-sm" placeholder="Buscar empleado por cédula o nombre..." type="text"/>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-on-surface-variant hover:text-primary-container transition-colors relative" title="Alertas">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-primary-container transition-colors" title="Configuración">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-surface-container-high border border-white/10 flex items-center justify-center overflow-hidden">
+<span class="material-symbols-outlined text-on-surface-variant text-sm">person</span>
+</div>
+</div>
+</header>
+<!-- Content Canvas -->
+<div class="p-margin space-y-8 max-w-[1600px] mx-auto w-full">
+<!-- ===== Encabezado: contexto del periodo activo (GET /home/summary) ===== -->
+<div class="flex flex-col md:flex-row md:justify-between md:items-end gap-4 z-rise">
+<div>
+<div class="flex items-center gap-3 mb-1">
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Inicio</h2>
+<span id="period-status" class="z-pill z-pill--muted">—</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">
+Periodo activo: <span id="active-period" class="text-on-surface font-medium">—</span>
+</p>
+</div>
+<div class="flex gap-3">
+<a href="../resultsf/code.html" class="z-btn z-btn--secondary">
+<span class="material-symbols-outlined text-[18px]">analytics</span>Ver resultados
+</a>
+<a href="../calculof/code.html" class="z-btn z-btn--primary glow-lime">
+<span class="material-symbols-outlined text-[18px]">upload_file</span>Cargar ventas
+</a>
+</div>
+</div>
+<!-- ===== Tarjetas de estado operativo real (GET /home/summary) ===== -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-gutter">
+<!-- Lotes pendientes de calcular -->
+<div class="glass-card glass-card--interactive p-6 rounded-xl flex flex-col justify-between h-40 z-rise z-rise-1">
+<div class="flex justify-between items-start">
+<div class="p-2 bg-primary-container/10 rounded-lg">
+<span class="material-symbols-outlined text-primary-container">upload_file</span>
+</div>
+<span class="z-pill z-pill--active">Acción</span>
+</div>
+<div>
+<p class="text-on-surface-variant text-sm font-label-bold">Lotes pendientes</p>
+<h3 id="card-pending" class="text-on-surface font-headline-md text-headline-md">—</h3>
+</div>
+</div>
+<!-- Cálculos en proceso -->
+<div class="glass-card glass-card--interactive p-6 rounded-xl flex flex-col justify-between h-40 z-rise z-rise-2">
+<div class="flex justify-between items-start">
+<div class="p-2 bg-primary-container/10 rounded-lg">
+<span class="material-symbols-outlined text-primary-container">event_available</span>
+</div>
+</div>
+<div>
+<p class="text-on-surface-variant text-sm font-label-bold">Periodos abiertos</p>
+<h3 id="card-open" class="text-on-surface font-headline-md text-headline-md">—</h3>
+</div>
+</div>
+<!-- Empleados liquidados en el periodo -->
+<div class="glass-card glass-card--interactive p-6 rounded-xl flex flex-col justify-between h-40 z-rise z-rise-3">
+<div class="flex justify-between items-start">
+<div class="p-2 bg-surface-container-high rounded-lg">
+<span class="material-symbols-outlined text-on-surface-variant">group</span>
+</div>
+<span id="card-settled-of" class="text-xs text-on-surface-variant font-label-bold">—</span>
+</div>
+<div>
+<p class="text-on-surface-variant text-sm font-label-bold">Liquidaciones del periodo</p>
+<h3 id="card-settled" class="text-on-surface font-headline-md text-headline-md">—</h3>
+</div>
+</div>
+<!-- Inconsistencias / lotes con error -->
+<div class="glass-card glass-card--interactive p-6 rounded-xl flex flex-col justify-between h-40 z-rise z-rise-4">
+<div class="flex justify-between items-start">
+<div class="p-2 bg-error-container/30 rounded-lg">
+<span class="material-symbols-outlined text-error">error</span>
+</div>
+<span class="z-pill z-pill--error">Revisar</span>
+</div>
+<div>
+<p class="text-on-surface-variant text-sm font-label-bold">Lotes con error</p>
+<h3 id="card-error" class="text-on-surface font-headline-md text-headline-md">—</h3>
+</div>
+</div>
+</div>
+<!-- ===== Cuerpo: tareas pendientes + actividad reciente ===== -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Tareas pendientes: lotes y periodos que requieren acción -->
+<div class="lg:col-span-7 glass-card rounded-xl p-6 md:p-8 z-rise z-rise-2">
+<div class="flex justify-between items-center mb-6">
+<div>
+<h4 class="font-headline-md text-headline-md text-on-surface">Cargas y cálculos</h4>
+<p class="text-on-surface-variant text-sm">Lotes del periodo activo (sales_upload_batch)</p>
+</div>
+<a href="../calculof/code.html" class="text-xs text-primary-container hover:underline">Ir a Cálculo</a>
+</div>
+<div class="overflow-x-auto -mx-2">
+<table class="w-full min-w-[560px] text-left">
+<thead>
+<tr class="text-[11px] uppercase tracking-wider text-on-surface-variant border-b border-white/5">
+<th class="font-label-bold py-2 px-2">Archivo</th>
+<th class="font-label-bold py-2 px-2">Cargado por</th>
+<th class="font-label-bold py-2 px-2 text-right">Filas</th>
+<th class="font-label-bold py-2 px-2">Estado</th>
+<th class="font-label-bold py-2 px-2 text-right">Acción</th>
+</tr>
+</thead>
+<tbody id="batches-body" class="text-sm">
+<!-- filas inyectadas por JS desde GET /sales-upload/batches -->
+</tbody>
+</table>
+</div>
+</div>
+<!-- Actividad reciente real: de la bitácora de auditoría (GET /admin/audit) -->
+<div class="lg:col-span-5 glass-card rounded-xl p-6 flex flex-col z-rise z-rise-3">
+<div class="flex justify-between items-center mb-6">
+<h4 class="font-label-bold text-label-bold text-on-surface uppercase tracking-wider">Actividad reciente</h4>
+<a href="../adminf/code.html" class="text-xs text-primary-container hover:underline">Auditoría</a>
+</div>
+<div id="activity-list" class="space-y-5 flex-1">
+<!-- entradas inyectadas por JS desde GET /admin/audit -->
+</div>
+<div class="mt-6 pt-5 border-t border-white/5 space-y-3">
+<p class="text-[10px] text-on-surface-variant font-label-bold uppercase tracking-widest mb-2">Acceso rápido</p>
+<a href="../calculof/code.html" class="w-full text-left px-4 py-3 bg-white/5 rounded-lg text-sm hover:bg-white/10 transition-colors flex justify-between items-center group">
+Cargar archivo de ventas
+<span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</a>
+<a href="../reportesf/code.html" class="w-full text-left px-4 py-3 bg-white/5 rounded-lg text-sm hover:bg-white/10 transition-colors flex justify-between items-center group">
+Exportar consolidado del periodo
+<span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</a>
+</div>
+</div>
+</div>
+<!-- ===== Avance de liquidación por equipo (progreso real, no decorativo) ===== -->
+<div class="glass-card rounded-xl p-6 md:p-8 overflow-hidden z-rise z-rise-4">
+<div class="flex justify-between items-center mb-6">
+<div>
+<h4 class="font-headline-md text-headline-md text-on-surface">Avance de liquidación por equipo</h4>
+<p class="text-on-surface-variant text-sm">Empleados calculados / total del equipo · Mayo 2025</p>
+</div>
+</div>
+<div id="team-progress" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-6">
+<!-- barras inyectadas por JS desde /home/summary (staff.teamProgress) -->
+</div>
+</div>
+</div>
+</main>
+
+<!-- ===== Conexión real con la API ===== -->
+<script src="../shared/api.js"></script>
+<script>
+(function () {
+  if (!ZambonAPI.requireAuth()) return;
+  var A = ZambonAPI;
+  var el = function (id) { return document.getElementById(id); };
+  function setText(id, v) { var n = el(id); if (n) n.textContent = v; }
+
+  // Sidebar: usuario real (data-bind)
+  var user = A.getUser() || {};
+  document.querySelectorAll('[data-bind="user.fullName"]').forEach(function (n) {
+    n.textContent = user.username || '—';
+  });
+  document.querySelectorAll('[data-bind="user.roleLabel"]').forEach(function (n) {
+    n.textContent = (user.roles && user.roles[0]) || '—';
+  });
+
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    try { return new Date(iso).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }); }
+    catch (e) { return '—'; }
+  }
+  var STATUS_LABEL = { PENDING: 'Pendiente', PROCESSING: 'Procesando', IMPORTED: 'Importado', ERROR: 'Con error' };
+  var STATUS_PILL = { IMPORTED: 'z-pill--active', PROCESSING: 'z-pill--active z-pill--pulse', ERROR: 'z-pill--error', PENDING: 'z-pill--muted' };
+
+  // ---- Resumen (tarjetas + encabezado + avance por equipo) ----
+  async function loadSummary() {
+    try {
+      var s = await A.get('/home/summary');
+      // Encabezado
+      if (s.activePeriod) {
+        setText('active-period', s.activePeriod.year + '-' + String(s.activePeriod.month).padStart(2, '0'));
+        var badge = el('period-status');
+        badge.textContent = 'Periodo abierto'; badge.className = 'z-pill z-pill--active';
+      } else {
+        setText('active-period', '—');
+      }
+      // Tarjetas (bloque staff)
+      var st = s.staff;
+      if (st) {
+        setText('card-pending', st.pendingBatches);
+        setText('card-open', st.openPeriods);
+        setText('card-settled', st.settlementsActivePeriod);
+        setText('card-error', st.errorBatches);
+        renderTeamProgress(st.teamProgress || []);
+      } else if (s.employee) {
+        // Empleado: no ve el tablero de staff; mostramos su última liquidación.
+        setText('card-pending', '—'); setText('card-open', '—');
+        setText('card-settled', s.employee.lastSettlement ? A.money(s.employee.lastSettlement.total) : '—');
+        setText('card-settled-of', 'último'); setText('card-error', '—');
+      }
+    } catch (e) { /* deja los '—' */ }
+  }
+
+  function renderTeamProgress(items) {
+    var box = el('team-progress');
+    box.innerHTML = '';
+    if (!items.length) {
+      box.innerHTML = '<p class="text-sm text-on-surface-variant col-span-full">— Sin avance para el periodo activo.</p>';
+      return;
+    }
+    items.forEach(function (t) {
+      var pct = t.total > 0 ? Math.round((t.calculated / t.total) * 100) : 0;
+      var d = document.createElement('div');
+      d.className = 'space-y-2';
+      d.innerHTML =
+        '<div class="flex justify-between items-center text-sm">' +
+          '<span class="font-label-bold text-on-surface">' + A.escapeHtml(t.teamName) + '</span>' +
+          '<span class="text-on-surface-variant tabular-nums">' + t.calculated + '/' + t.total + '</span>' +
+        '</div>' +
+        '<div class="z-progress"><div class="z-progress__fill" style="width:' + pct + '%"></div></div>';
+      box.appendChild(d);
+    });
+  }
+
+  // ---- Tabla de lotes ----
+  async function loadBatches() {
+    var body = el('batches-body');
+    try {
+      var batches = await A.get('/sales-upload/batches');
+      body.innerHTML = '';
+      if (!batches.length) {
+        body.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-on-surface-variant text-sm">— Sin lotes cargados.</td></tr>';
+        return;
+      }
+      batches.slice(0, 8).forEach(function (b) {
+        var pill = STATUS_PILL[b.status] || 'z-pill--muted';
+        var label = STATUS_LABEL[b.status] || b.status;
+        var tr = document.createElement('tr');
+        tr.className = 'border-b border-white/5';
+        tr.innerHTML =
+          '<td class="py-3 px-2 text-on-surface truncate max-w-[240px]">' + A.escapeHtml(b.fileName) + '</td>' +
+          '<td class="py-3 px-2 text-on-surface-variant">' + fmtDate(b.uploadedAt) + '</td>' +
+          '<td class="py-3 px-2 text-right text-on-surface tabular-nums">—</td>' +
+          '<td class="py-3 px-2"><span class="z-pill ' + pill + '">' + A.escapeHtml(label) + '</span></td>' +
+          '<td class="py-3 px-2 text-right"><a href="../calculof/code.html" class="text-xs text-primary-container hover:underline">Ver</a></td>';
+        body.appendChild(tr);
+      });
+    } catch (e) {
+      body.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-on-surface-variant text-sm">—</td></tr>';
+    }
+  }
+
+  // ---- Actividad reciente (auditoría) ----
+  var ACTION_ICON = { NOVELTY_CREATE: 'event_note', PAYMENT_CONDITION_CREATE: 'shield', REPROCESS: 'calculate', PERIOD_CLOSE: 'lock' };
+  var ACTION_LABEL = { NOVELTY_CREATE: 'Novedad registrada', PAYMENT_CONDITION_CREATE: 'Pago garantizado', REPROCESS: 'Reproceso ejecutado', PERIOD_CLOSE: 'Periodo cerrado' };
+  async function loadActivity() {
+    var list = el('activity-list');
+    try {
+      var items = await A.get('/admin/audit');
+      list.innerHTML = '';
+      if (!items.length) {
+        list.innerHTML = '<p class="text-sm text-on-surface-variant">— Sin actividad registrada.</p>';
+        return;
+      }
+      items.slice(0, 6).forEach(function (a) {
+        var icon = ACTION_ICON[a.action] || 'history';
+        var label = ACTION_LABEL[a.action] || a.action;
+        var d = document.createElement('div');
+        d.className = 'flex gap-4 items-start';
+        d.innerHTML =
+          '<div class="w-9 h-9 rounded-full bg-surface-container-high flex items-center justify-center shrink-0">' +
+            '<span class="material-symbols-outlined text-[16px] text-primary-container">' + icon + '</span></div>' +
+          '<div><p class="text-sm text-on-surface"><span class="font-label-bold">' + A.escapeHtml(label) + '</span>' +
+            (a.reason ? ' — ' + A.escapeHtml(a.reason) : '') + '</p>' +
+            '<span class="text-[10px] text-on-surface-variant uppercase">' + fmtDate(a.createdAt) + ' · ' + A.escapeHtml(A.orDash(a.username)) + '</span></div>';
+        list.appendChild(d);
+      });
+    } catch (e) {
+      // /admin/audit es solo ADMIN; para NOMINA dará 403 → mostramos vacío.
+      list.innerHTML = '<p class="text-sm text-on-surface-variant">— Sin actividad disponible para tu rol.</p>';
+    }
+  }
+
+  loadSummary();
+  loadBatches();
+  loadActivity();
+})();
+</script>
+</body></html>

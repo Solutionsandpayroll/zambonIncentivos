@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Zambon - Resultados</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- ===== Zambon OS shared theme (source: /shared/zambon-theme.js) ===== -->
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          "background": "#121414", "on-background": "#e2e2e2", "surface": "#121414",
+          "surface-dim": "#121414", "surface-bright": "#37393a",
+          "surface-container-lowest": "#0c0f0f", "surface-container-low": "#1a1c1c",
+          "surface-container": "#1e2020", "surface-container-high": "#282a2b",
+          "surface-container-highest": "#333535", "surface-variant": "#333535",
+          "on-surface": "#e2e2e2", "on-surface-variant": "#c8c8ae",
+          "inverse-surface": "#e2e2e2", "inverse-on-surface": "#2f3131", "surface-tint": "#c5cf1b",
+          "primary": "#dfea3a", "on-primary": "#303300", "primary-container": "#c3cd17",
+          "on-primary-container": "#505500", "primary-fixed": "#e1ec3d", "primary-fixed-dim": "#c5cf1b",
+          "on-primary-fixed": "#1b1d00", "on-primary-fixed-variant": "#464a00", "inverse-primary": "#5e6300",
+          "secondary": "#c2c7ce", "on-secondary": "#2c3136", "secondary-container": "#42474d",
+          "on-secondary-container": "#b1b5bc", "secondary-fixed": "#dee3ea", "secondary-fixed-dim": "#c2c7ce",
+          "on-secondary-fixed": "#171c21", "on-secondary-fixed-variant": "#42474d",
+          "tertiary": "#dae1eb", "on-tertiary": "#2a3139", "tertiary-container": "#bec5cf",
+          "on-tertiary-container": "#4b525a", "tertiary-fixed": "#dce3ed", "tertiary-fixed-dim": "#c0c7d1",
+          "on-tertiary-fixed": "#151c24", "on-tertiary-fixed-variant": "#404750",
+          "outline": "#92927a", "outline-variant": "#474834", "error": "#ffb4ab",
+          "on-error": "#690005", "error-container": "#93000a", "on-error-container": "#ffdad6"
+        },
+        borderRadius: { "DEFAULT": "0.5rem", "sm": "0.25rem", "md": "0.75rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px" },
+        spacing: { "unit": "4px", "xs": "0.5rem", "sm": "1rem", "md": "1.5rem", "lg": "2.5rem", "xl": "4rem", "gutter": "24px", "margin": "32px" },
+        fontFamily: { "display-xl": ["Poppins"], "headline-lg": ["Poppins"], "headline-md": ["Poppins"], "body-lg": ["Poppins"], "body-md": ["Poppins"], "label-bold": ["Poppins"], "label-sm": ["Poppins"], "mono": ["JetBrains Mono", "monospace"] },
+        fontSize: {
+          "display-xl": ["48px", { lineHeight: "1.1", letterSpacing: "-0.04em", fontWeight: "700" }],
+          "headline-lg": ["32px", { lineHeight: "1.2", letterSpacing: "-0.03em", fontWeight: "600" }],
+          "headline-md": ["24px", { lineHeight: "1.2", letterSpacing: "-0.02em", fontWeight: "600" }],
+          "body-lg": ["18px", { lineHeight: "1.6", letterSpacing: "-0.01em", fontWeight: "400" }],
+          "body-md": ["16px", { lineHeight: "1.5", letterSpacing: "-0.01em", fontWeight: "400" }],
+          "label-bold": ["14px", { lineHeight: "1.2", letterSpacing: "0.02em", fontWeight: "600" }],
+          "label-sm": ["12px", { lineHeight: "1.2", letterSpacing: "0.01em", fontWeight: "500" }]
+        },
+        zIndex: { "dropdown": "1000", "sticky": "1100", "modal-backdrop": "1200", "modal": "1300", "toast": "1400", "tooltip": "1500" }
+      }
+    }
+  }
+</script>
+<!-- ===== Zambon OS shared base (source: /shared/zambon-base.html) ===== -->
+<style id="zambon-base">
+  :root { --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); }
+  body { background-color: #121414; color: #e2e2e2; }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #333535; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #474834; }
+  .glass-card { background: rgba(30,32,32,0.6); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.06); transition: border-color 200ms var(--ease-out), transform 200ms var(--ease-out); }
+  .glow-lime { box-shadow: 0 0 20px rgba(195,205,23,0.15); }
+  .z-sidebar { position: fixed; left: 0; top: 0; height: 100vh; width: 16rem; display: flex; flex-direction: column; padding: 2rem 0; background: rgba(30,32,32,0.6); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-right: 1px solid rgba(255,255,255,0.06); z-index: 1100; }
+  .z-nav-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1.5rem; color: #c8c8ae; font-family: Poppins; font-weight: 500; font-size: 14px; position: relative; transition: color 150ms ease, background-color 150ms ease; }
+  .z-nav-item .material-symbols-outlined { font-size: 20px; }
+  .z-nav-item:active { transform: scale(0.97); }
+  .z-nav-item--active { color: #c3cd17; background: rgba(195,205,23,0.12); font-weight: 600; }
+  .z-nav-item--active::before { content: ""; position: absolute; left: 0; top: 0.5rem; bottom: 0.5rem; width: 3px; border-radius: 0 3px 3px 0; background: #c3cd17; }
+  @media (hover: hover) and (pointer: fine) { .z-nav-item:not(.z-nav-item--active):hover { color: #e2e2e2; background: rgba(255,255,255,0.05); } }
+  .z-topbar { display: flex; align-items: center; justify-content: space-between; width: 100%; height: 4rem; padding: 0 2rem; position: sticky; top: 0; background: rgba(12,15,15,0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.06); z-index: 1100; }
+  .z-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.625rem 1.5rem; border-radius: 1rem; font-family: Poppins; font-weight: 600; font-size: 14px; letter-spacing: 0.02em; cursor: pointer; white-space: nowrap; transition: background-color 160ms var(--ease-out), color 160ms var(--ease-out), border-color 160ms var(--ease-out), transform 160ms var(--ease-out); }
+  .z-btn:active { transform: scale(0.97); }
+  .z-btn--primary { background: #c3cd17; color: #303300; border: 1px solid transparent; }
+  .z-btn--secondary { background: transparent; color: #e2e2e2; border: 1px solid #c3cd17; }
+  .z-btn--ghost { background: rgba(255,255,255,0.05); color: #e2e2e2; border: 1px solid transparent; }
+  .z-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  @media (hover: hover) and (pointer: fine) { .z-btn--primary:hover { background: #dfea3a; } .z-btn--secondary:hover { background: rgba(195,205,23,0.08); } .z-btn--ghost:hover { background: rgba(255,255,255,0.1); } }
+  .z-pill { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.125rem 0.625rem; border-radius: 9999px; font-family: Poppins; font-weight: 500; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .z-pill--active { background: rgba(195,205,23,0.2); border: 1px solid rgba(195,205,23,0.3); color: #c3cd17; }
+  .z-pill--muted { background: #333535; border: 1px solid #474834; color: #c8c8ae; }
+  .z-pill--error { background: rgba(147,0,10,0.25); border: 1px solid rgba(255,180,171,0.3); color: #ffb4ab; }
+  .z-progress { height: 8px; width: 100%; background: #282a2b; border-radius: 9999px; overflow: hidden; }
+  .z-progress__fill { height: 100%; background: #c3cd17; border-radius: 9999px; transform-origin: left; animation: z-grow 600ms var(--ease-out) both; }
+  @keyframes z-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+  .z-input { width: 100%; background: rgba(26,28,28,0.5); color: #e2e2e2; border: none; border-bottom: 2px solid #474834; border-radius: 0.5rem 0.5rem 0 0; padding: 0.5rem 0.75rem; font-family: Poppins; font-size: 16px; transition: border-color 200ms ease; }
+  .z-input::placeholder { color: #92927a; }
+  .z-input:focus { outline: none; border-bottom-color: #c3cd17; box-shadow: none; }
+  .z-rise { animation: z-rise 300ms var(--ease-out) both; }
+  .z-rise-1 { animation-delay: 40ms; } .z-rise-2 { animation-delay: 80ms; } .z-rise-3 { animation-delay: 120ms; } .z-rise-4 { animation-delay: 160ms; }
+  @keyframes z-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @media (hover: hover) and (pointer: fine) { .glass-card--interactive:hover { border-color: rgba(195,205,23,0.3); transform: translateY(-2px); } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } .glass-card--interactive:hover, .z-btn:active, .z-nav-item:active { transform: none; } }
+
+  /* ===== Results-specific ===== */
+  .mono { font-family: 'JetBrains Mono'; }
+  .emp-row { width: 100%; text-align: left; padding: 0.75rem 0.875rem; border-radius: 0.75rem; display: flex; align-items: center; gap: 0.75rem; transition: background 150ms ease; cursor: pointer; border: 1px solid transparent; }
+  .emp-row:hover { background: rgba(255,255,255,0.04); }
+  .emp-row--active { background: rgba(195,205,23,0.10); border-color: rgba(195,205,23,0.25); }
+  .emp-row--active .emp-row__name { color: #c3cd17; }
+  .num-cell { font-family: 'JetBrains Mono'; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body class="bg-background text-on-surface font-['Poppins'] antialiased min-h-screen flex">
+<!-- ===== Sidebar — español, Resultados activo ===== -->
+<aside class="z-sidebar hidden md:flex">
+<div class="px-6 mb-10">
+<h1 class="text-xl font-black tracking-tighter text-primary-container font-['Poppins']">Zambon</h1>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Motor de Incentivos</p>
+</div>
+<nav class="flex-1 flex flex-col gap-1">
+<a class="z-nav-item" href="../home/code.html"><span class="material-symbols-outlined">dashboard</span>Inicio</a>
+<a class="z-nav-item" href="../calculof/code.html"><span class="material-symbols-outlined">calculate</span>Cálculo</a>
+<a aria-current="page" class="z-nav-item z-nav-item--active" href="../resultsf/code.html"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">analytics</span>Resultados</a>
+<a class="z-nav-item" href="../reportesf/code.html"><span class="material-symbols-outlined">description</span>Reportes</a>
+<a class="z-nav-item" href="../adminf/code.html"><span class="material-symbols-outlined">admin_panel_settings</span>Admin</a>
+</nav>
+<div class="px-6 mt-auto pt-6 border-t border-white/5">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high border border-white/10 flex items-center justify-center overflow-hidden shrink-0"><span class="material-symbols-outlined text-on-surface-variant text-[20px]">person</span></div>
+<div class="overflow-hidden"><p id="sidebar-user" class="font-label-bold text-label-bold text-on-surface truncate">—</p><p id="sidebar-role" class="font-label-sm text-label-sm text-on-surface-variant truncate">—</p></div>
+</div>
+</div>
+</aside>
+<main class="flex-1 md:ml-64 flex flex-col min-w-0">
+<!-- ===== Top bar ===== -->
+<header class="z-topbar">
+<div class="relative w-full max-w-md group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-primary-container transition-colors">search</span>
+<input class="z-input pl-10 text-sm" placeholder="Buscar empleado por cédula o nombre..." type="text"/>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-on-surface-variant hover:text-primary-container transition-colors relative"><span class="material-symbols-outlined">notifications</span><span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span></button>
+<button class="p-2 text-on-surface-variant hover:text-primary-container transition-colors"><span class="material-symbols-outlined">settings</span></button>
+<div class="w-8 h-8 rounded-full bg-surface-container-high border border-white/10 flex items-center justify-center overflow-hidden"><span class="material-symbols-outlined text-on-surface-variant text-sm">person</span></div>
+</div>
+</header>
+
+<div class="p-margin flex flex-col gap-6 max-w-[1500px] mx-auto w-full">
+<!-- ===== Encabezado + filtros (GET /results?periodId=&teamId=) ===== -->
+<div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 z-rise">
+<div class="flex items-center gap-3">
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Resultados</h2>
+<span id="period-badge" class="z-pill z-pill--muted">—</span>
+</div>
+<div class="flex items-center gap-3">
+<select id="filter-period" class="z-input !w-auto min-w-[150px] text-sm"><option value="">Todos los periodos</option></select>
+<select id="filter-team" class="z-input !w-auto min-w-[170px] text-sm"><option value="">Todos los equipos</option></select>
+</div>
+</div>
+
+<!-- ===== Lista (izq) + Detalle de liquidación (der) ===== -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+<!-- Lista de empleados liquidados del periodo -->
+<aside class="lg:col-span-4 xl:col-span-3 glass-card rounded-xl p-3 z-rise z-rise-1 h-fit lg:sticky lg:top-24">
+<div class="flex items-center justify-between px-2 py-2">
+<span class="font-label-bold text-label-bold text-on-surface uppercase tracking-wider">Liquidaciones</span>
+<span id="results-count" class="z-pill z-pill--muted">—</span>
+</div>
+<div id="results-list" class="flex flex-col gap-0.5 max-h-[560px] overflow-y-auto pr-1">
+<!-- Filas inyectadas por JS desde GET /results -->
+<div id="results-empty" class="hidden flex-col items-center text-center gap-2 py-10 px-4 text-on-surface-variant">
+<span class="material-symbols-outlined text-[32px] opacity-60">inbox</span>
+<p class="text-sm">Sin liquidaciones para este filtro.</p>
+<p class="text-[11px] opacity-70">Ejecuta un cálculo en la pestaña Cálculo para ver resultados aquí.</p>
+</div>
+<div id="results-loading" class="flex flex-col items-center gap-2 py-10 text-on-surface-variant">
+<span class="material-symbols-outlined text-[28px] animate-spin">progress_activity</span>
+<p class="text-sm">Cargando…</p>
+</div>
+</div>
+</aside>
+
+<!-- Detalle de la liquidación seleccionada -->
+<section class="lg:col-span-8 xl:col-span-9 flex flex-col gap-6">
+
+<!-- Placeholder cuando no hay ninguna liquidación seleccionada -->
+<div id="detail-empty" class="glass-card rounded-xl p-10 flex flex-col items-center text-center gap-3 text-on-surface-variant z-rise z-rise-2">
+<span class="material-symbols-outlined text-[40px] opacity-60">description</span>
+<p class="text-body-md">Selecciona una liquidación para ver su detalle.</p>
+</div>
+
+<!-- Panel de detalle (poblado por JS desde GET /results/:headerId) -->
+<div id="detail-panel" class="hidden flex-col gap-6">
+
+<!-- Cabecera de identidad + acción -->
+<div class="glass-card rounded-xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 z-rise z-rise-2">
+<div class="flex items-center gap-4">
+<div id="d-avatar" class="w-14 h-14 rounded-full bg-surface-container-high flex items-center justify-center shrink-0 text-lg font-bold text-on-surface">—</div>
+<div>
+<div class="flex items-center gap-2">
+<h3 id="d-name" class="font-headline-md text-headline-md text-on-surface">—</h3>
+<span id="d-status" class="z-pill z-pill--active"><span class="material-symbols-outlined text-[13px]">check</span>—</span>
+</div>
+<p id="d-meta" class="text-label-sm text-on-surface-variant mono mt-0.5">—</p>
+</div>
+</div>
+<button id="d-download" class="z-btn z-btn--secondary"><span class="material-symbols-outlined text-[18px]">download</span>Descargar soporte</button>
+</div>
+
+<!-- Resumen de totales (incentive_calculation_header) -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 z-rise z-rise-2">
+<div class="glass-card rounded-xl p-5">
+<p class="text-label-sm text-on-surface-variant">Base salarial</p>
+<p id="d-base" class="num-cell text-headline-md text-on-surface mt-1">—</p>
+</div>
+<div class="glass-card rounded-xl p-5">
+<div class="flex items-center justify-between"><p class="text-label-sm text-on-surface-variant">Componente 80%</p></div>
+<p id="d-80" class="num-cell text-headline-md text-on-surface mt-1">—</p>
+<p id="d-80-sub" class="text-[11px] text-on-surface-variant mt-1">—</p>
+</div>
+<div class="glass-card rounded-xl p-5">
+<div class="flex items-center justify-between"><p class="text-label-sm text-on-surface-variant">Componente 20%</p><span id="d-20-pill" class="z-pill z-pill--muted">—</span></div>
+<p id="d-20" class="num-cell text-headline-md text-on-surface mt-1">—</p>
+<p id="d-20-sub" class="text-[11px] text-on-surface-variant mt-1">—</p>
+</div>
+<div class="glass-card rounded-xl p-5 glow-lime border-primary-container/20">
+<p class="text-label-sm text-on-surface-variant">Total liquidado</p>
+<p id="d-total" class="num-cell text-headline-md text-primary-container mt-1">—</p>
+<p class="text-[11px] text-on-surface-variant mt-1">80% + 20%</p>
+</div>
+</div>
+
+<!-- Detalle del 80% por componente (incentive_calculation_detail) -->
+<div class="glass-card rounded-xl p-6 z-rise z-rise-3">
+<div class="flex items-center justify-between mb-4">
+<h4 class="font-headline-md text-headline-md text-on-surface">Detalle del 80% por componente</h4>
+<span class="text-label-sm text-on-surface-variant">Cumplimiento → curva → ponderación</span>
+</div>
+<div class="overflow-x-auto -mx-2">
+<table class="w-full min-w-[720px] text-left text-sm">
+<thead>
+<tr class="text-[11px] uppercase tracking-wider text-on-surface-variant border-b border-white/5">
+<th class="font-label-bold py-2.5 px-2">Componente</th>
+<th class="font-label-bold py-2.5 px-2 text-right">Cuota</th>
+<th class="font-label-bold py-2.5 px-2 text-right">Venta real</th>
+<th class="font-label-bold py-2.5 px-2 text-right">% Cumpl.</th>
+<th class="font-label-bold py-2.5 px-2 text-right">% Curva</th>
+<th class="font-label-bold py-2.5 px-2 text-right">Valor</th>
+</tr>
+</thead>
+<tbody id="d-detail-rows">
+<!-- filas inyectadas por JS -->
+</tbody>
+<tfoot>
+<tr class="border-t border-white/10">
+<td class="py-3 px-2 font-semibold text-on-surface" colspan="5">Total componente 80%</td>
+<td id="d-detail-total" class="py-3 px-2 text-right num-cell font-semibold text-primary-container">—</td>
+</tr>
+</tfoot>
+</table>
+</div>
+</div>
+
+<!-- Bloque de ejecución 20% + historial de versión -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 z-rise z-rise-4">
+<!-- ejecución 20% -->
+<div class="glass-card rounded-xl p-6 md:col-span-2">
+<h4 class="font-label-bold text-label-bold text-on-surface uppercase tracking-wider mb-4">Ejecución (20%)</h4>
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-lg bg-primary-container/10 flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-primary-container">verified</span></div>
+<div class="flex-1">
+<p class="text-sm text-on-surface font-medium">KPI de ejecución de ciclo</p>
+<p id="d-exec-sub" class="text-label-sm text-on-surface-variant">—</p>
+</div>
+<div class="text-right">
+<p id="d-exec-value" class="num-cell text-headline-md text-on-surface">—</p>
+<span id="d-exec-pill" class="z-pill z-pill--muted">—</span>
+</div>
+</div>
+</div>
+<!-- historial de versión -->
+<div class="glass-card rounded-xl p-6">
+<h4 class="font-label-bold text-label-bold text-on-surface uppercase tracking-wider mb-4">Versiones</h4>
+<div id="d-versions" class="flex flex-col gap-3">
+<!-- inyectadas por JS -->
+</div>
+</div>
+</div>
+
+</div>
+</section>
+</div>
+</div>
+</main>
+
+<!-- ===== Conexión real con la API ===== -->
+<script src="../shared/api.js"></script>
+<script>
+(function () {
+  if (!ZambonAPI.requireAuth()) return;
+  var A = ZambonAPI;
+
+  // Usuario en el sidebar
+  var user = A.getUser() || {};
+  setText('sidebar-user', user.username || '—');
+  setText('sidebar-role', (user.roles && user.roles[0]) || '—');
+
+  var el = function (id) { return document.getElementById(id); };
+  function setText(id, v) { var n = el(id); if (n) n.textContent = v; }
+  function show(id) { var n = el(id); if (n) { n.classList.remove('hidden'); n.classList.add('flex'); } }
+  function hide(id) { var n = el(id); if (n) { n.classList.add('hidden'); n.classList.remove('flex'); } }
+
+  var state = { periodId: '', teamId: '', headers: [], selectedId: null };
+
+  // ---- Carga de filtros (periodos, equipos) ----
+  async function loadFilters() {
+    try {
+      var periods = await A.get('/periods');
+      var sel = el('filter-period');
+      periods.forEach(function (p) {
+        var o = document.createElement('option');
+        o.value = p.periodId;
+        o.textContent = p.periodYear + '-' + String(p.periodMonth).padStart(2, '0') +
+          (p.periodType === 'CYCLE' ? ' (ciclo)' : '');
+        sel.appendChild(o);
+      });
+    } catch (e) { /* filtros opcionales */ }
+    try {
+      var teams = await A.get('/teams');
+      var selT = el('filter-team');
+      teams.forEach(function (t) {
+        var o = document.createElement('option');
+        o.value = t.teamId; o.textContent = t.teamName;
+        selT.appendChild(o);
+      });
+    } catch (e) { /* filtros opcionales */ }
+  }
+
+  // ---- Lista de liquidaciones ----
+  async function loadResults() {
+    show('results-loading'); hide('results-empty');
+    clearList();
+    var q = [];
+    if (state.periodId) q.push('periodId=' + encodeURIComponent(state.periodId));
+    if (state.teamId) q.push('teamId=' + encodeURIComponent(state.teamId));
+    try {
+      var rows = await A.get('/results' + (q.length ? '?' + q.join('&') : ''));
+      state.headers = rows || [];
+      hide('results-loading');
+      renderList();
+    } catch (e) {
+      hide('results-loading');
+      setText('results-count', '—');
+      show('results-empty');
+    }
+  }
+
+  function clearList() {
+    var list = el('results-list');
+    // Conserva los placeholders empty/loading; borra filas previas.
+    Array.prototype.slice.call(list.querySelectorAll('.emp-row')).forEach(function (n) { n.remove(); });
+  }
+
+  function renderList() {
+    var list = el('results-list');
+    setText('results-count', String(state.headers.length));
+    if (!state.headers.length) { show('results-empty'); return; }
+    hide('results-empty');
+
+    state.headers.forEach(function (h) {
+      var btn = document.createElement('button');
+      btn.className = 'emp-row';
+      btn.dataset.id = h.headerId;
+      var guaranteed = h.guaranteedPayApplied
+        ? '<span class="material-symbols-outlined text-[13px]" title="Pago garantizado">shield</span>' : '';
+      btn.innerHTML =
+        '<div class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center shrink-0 text-[11px] font-semibold">' +
+          A.escapeHtml(A.initials(h.employee.fullName)) + '</div>' +
+        '<div class="min-w-0 flex-1">' +
+          '<p class="emp-row__name text-sm font-medium text-on-surface truncate">' + A.escapeHtml(h.employee.fullName) + '</p>' +
+          '<p class="mono text-[11px] text-on-surface-variant truncate">' + A.escapeHtml(A.orDash(h.employee.documentNumber)) + ' · ' + A.escapeHtml(A.orDash(h.team)) + '</p>' +
+        '</div>' +
+        '<span class="num-cell text-[11px] text-on-surface-variant flex items-center gap-1">' + guaranteed + A.money(h.totalIncentive) + '</span>';
+      btn.addEventListener('click', function () { selectHeader(h.headerId); });
+      list.appendChild(btn);
+    });
+  }
+
+  // ---- Detalle ----
+  async function selectHeader(headerId) {
+    state.selectedId = headerId;
+    Array.prototype.slice.call(document.querySelectorAll('.emp-row')).forEach(function (n) {
+      n.classList.toggle('emp-row--active', n.dataset.id === headerId);
+    });
+    hide('detail-empty');
+    try {
+      var d = await A.get('/results/' + encodeURIComponent(headerId));
+      renderDetail(d);
+      el('detail-panel').classList.remove('hidden');
+      el('detail-panel').classList.add('flex');
+    } catch (e) {
+      el('detail-panel').classList.add('hidden');
+      show('detail-empty');
+    }
+  }
+
+  function renderDetail(d) {
+    var emp = d.employee || {};
+    setText('d-avatar', A.initials(emp.fullName) || '—');
+    setText('d-name', A.orDash(emp.fullName));
+    setText('d-status', d.calculationVersion ? ('v' + d.calculationVersion) : '—');
+    var per = d.period || {};
+    var perTxt = per.year ? (per.year + '-' + String(per.month).padStart(2, '0')) : '—';
+    setText('d-meta', 'CC ' + A.orDash(emp.documentNumber) + ' · ' + A.orDash(emp.team) + ' · ' + perTxt);
+
+    setText('d-base', A.money(d.baseSalary));
+    var c80 = d.component80 || {}, c20 = d.component20 || {};
+    setText('d-80', A.money(c80.result));
+    setText('d-80-sub', 'Teórico ' + A.money(c80.theoretical));
+    setText('d-20', A.money(c20.result));
+    setText('d-20-pill', c20.cycleMultiplier === 1 ? 'Mensual' : ('Ciclo ×' + A.orDash(c20.cycleMultiplier)));
+    setText('d-20-sub', c20.kpiResult === true ? 'Cumple · tope 100%' : (c20.kpiResult === false ? 'No cumple' : '—'));
+    setText('d-total', A.money(d.totalIncentive));
+
+    // Detalle por componente
+    var body = el('d-detail-rows');
+    body.innerHTML = '';
+    (d.details || []).forEach(function (r) {
+      var tr = document.createElement('tr');
+      tr.className = 'border-b border-white/5';
+      tr.innerHTML =
+        '<td class="py-3 px-2 text-on-surface">' + A.escapeHtml(A.orDash(r.component)) + '</td>' +
+        '<td class="py-3 px-2 text-right num-cell text-on-surface-variant">' + A.orDash(r.quotaValue) + '</td>' +
+        '<td class="py-3 px-2 text-right num-cell text-on-surface">' + A.orDash(r.saleValue) + '</td>' +
+        '<td class="py-3 px-2 text-right num-cell text-on-surface">' + A.percent(r.compliancePercent) + '</td>' +
+        '<td class="py-3 px-2 text-right num-cell text-primary-container">' + A.percent(r.curvePayPercent) + '</td>' +
+        '<td class="py-3 px-2 text-right num-cell text-on-surface">' + A.money(r.componentIncentiveValue) + '</td>';
+      body.appendChild(tr);
+    });
+    if (!(d.details || []).length) {
+      body.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-on-surface-variant text-sm">Sin detalle por componente.</td></tr>';
+    }
+    setText('d-detail-total', A.money(c80.result));
+
+    // Ejecución 20%
+    setText('d-exec-value', A.money(c20.result));
+    setText('d-exec-sub', c20.cycleMultiplier === 1
+      ? 'Pago mensual (multiplicador ×1)'
+      : 'Pago por ciclo (multiplicador ×' + A.orDash(c20.cycleMultiplier) + ') · no paga sobrecumplimiento');
+    var execPill = el('d-exec-pill');
+    if (c20.kpiResult === true) { execPill.textContent = 'Cumple'; execPill.className = 'z-pill z-pill--active'; }
+    else if (c20.kpiResult === false) { execPill.textContent = 'No cumple'; execPill.className = 'z-pill z-pill--error'; }
+    else { execPill.textContent = '—'; execPill.className = 'z-pill z-pill--muted'; }
+
+    if (d.guaranteedPayApplied) {
+      setText('d-status', 'Pago garantizado');
+    }
+
+    // Versiones
+    loadVersions(d.headerId);
+
+    // Descargar soporte (export XLSX individual)
+    var dl = el('d-download');
+    dl.onclick = function () { downloadSupport(emp, per); };
+  }
+
+  async function loadVersions(headerId) {
+    var box = el('d-versions');
+    box.innerHTML = '<p class="text-[11px] text-on-surface-variant">—</p>';
+    try {
+      var versions = await A.get('/results/' + encodeURIComponent(headerId) + '/versions');
+      box.innerHTML = '';
+      (versions || []).forEach(function (v, i) {
+        var vigente = i === 0;
+        var row = document.createElement('div');
+        row.className = 'flex items-center gap-3' + (vigente ? '' : ' opacity-60');
+        row.innerHTML =
+          '<span class="w-2 h-2 rounded-full ' + (vigente ? 'bg-primary-container' : 'bg-on-surface-variant') + ' shrink-0"></span>' +
+          '<div class="flex-1"><p class="text-sm text-on-surface">v' + v.calculationVersion + (vigente ? ' · vigente' : '') + '</p>' +
+          '<p class="text-[11px] text-on-surface-variant mono">' + A.escapeHtml(A.orDash(v.calculationStatus)) + '</p></div>';
+        box.appendChild(row);
+      });
+      if (!(versions || []).length) box.innerHTML = '<p class="text-[11px] text-on-surface-variant">—</p>';
+    } catch (e) {
+      box.innerHTML = '<p class="text-[11px] text-on-surface-variant">—</p>';
+    }
+  }
+
+  // Descarga el soporte individual del empleado (POST /reports/export, XLSX).
+  async function downloadSupport(emp, per) {
+    if (!state.selectedId) return;
+    // El export usa periodId + employeeId; los tenemos del detalle cargado.
+    try {
+      var body = { type: 'EMPLOYEE', format: 'XLSX', filters: {} };
+      // El detalle no expone ids crudos de periodo/empleado en todos los casos;
+      // usamos el filtro actual como mejor aproximación disponible.
+      if (state.periodId) body.filters.periodId = state.periodId;
+      // Sin periodId seleccionado no podemos exportar de forma fiable.
+      if (!body.filters.periodId) {
+        alert('Selecciona un periodo en el filtro para descargar el soporte.');
+        return;
+      }
+      var res = await fetch('/api/v1/reports/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + A.getToken() },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error('export');
+      var blob = await res.blob();
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = 'soporte.xlsx'; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert('No se pudo generar el soporte.');
+    }
+  }
+
+  // ---- Eventos de filtro ----
+  el('filter-period').addEventListener('change', function (e) {
+    state.periodId = e.target.value;
+    var opt = e.target.options[e.target.selectedIndex];
+    setText('period-badge', state.periodId ? opt.textContent : '—');
+    loadResults();
+  });
+  el('filter-team').addEventListener('change', function (e) {
+    state.teamId = e.target.value;
+    loadResults();
+  });
+
+  // ---- Init ----
+  (async function init() {
+    await loadFilters();
+    await loadResults();
+  })();
+})();
+</script>
+</body></html>

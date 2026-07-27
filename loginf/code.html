@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Zambon - Acceso</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- ===== Zambon OS shared theme (source: /shared/zambon-theme.js) ===== -->
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          "background": "#121414", "on-background": "#e2e2e2", "surface": "#121414",
+          "surface-dim": "#121414", "surface-bright": "#37393a",
+          "surface-container-lowest": "#0c0f0f", "surface-container-low": "#1a1c1c",
+          "surface-container": "#1e2020", "surface-container-high": "#282a2b",
+          "surface-container-highest": "#333535", "surface-variant": "#333535",
+          "on-surface": "#e2e2e2", "on-surface-variant": "#c8c8ae",
+          "inverse-surface": "#e2e2e2", "inverse-on-surface": "#2f3131", "surface-tint": "#c5cf1b",
+          "primary": "#dfea3a", "on-primary": "#303300", "primary-container": "#c3cd17",
+          "on-primary-container": "#505500", "primary-fixed": "#e1ec3d", "primary-fixed-dim": "#c5cf1b",
+          "on-primary-fixed": "#1b1d00", "on-primary-fixed-variant": "#464a00", "inverse-primary": "#5e6300",
+          "secondary": "#c2c7ce", "on-secondary": "#2c3136", "secondary-container": "#42474d",
+          "on-secondary-container": "#b1b5bc", "secondary-fixed": "#dee3ea", "secondary-fixed-dim": "#c2c7ce",
+          "on-secondary-fixed": "#171c21", "on-secondary-fixed-variant": "#42474d",
+          "tertiary": "#dae1eb", "on-tertiary": "#2a3139", "tertiary-container": "#bec5cf",
+          "on-tertiary-container": "#4b525a", "tertiary-fixed": "#dce3ed", "tertiary-fixed-dim": "#c0c7d1",
+          "on-tertiary-fixed": "#151c24", "on-tertiary-fixed-variant": "#404750",
+          "outline": "#92927a", "outline-variant": "#474834", "error": "#ffb4ab",
+          "on-error": "#690005", "error-container": "#93000a", "on-error-container": "#ffdad6"
+        },
+        borderRadius: { "DEFAULT": "0.5rem", "sm": "0.25rem", "md": "0.75rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px" },
+        spacing: { "unit": "4px", "xs": "0.5rem", "sm": "1rem", "md": "1.5rem", "lg": "2.5rem", "xl": "4rem", "gutter": "24px", "margin": "32px" },
+        fontFamily: { "display-xl": ["Poppins"], "headline-lg": ["Poppins"], "headline-md": ["Poppins"], "body-lg": ["Poppins"], "body-md": ["Poppins"], "label-bold": ["Poppins"], "label-sm": ["Poppins"], "mono": ["JetBrains Mono", "monospace"] },
+        fontSize: {
+          "display-xl": ["48px", { lineHeight: "1.1", letterSpacing: "-0.04em", fontWeight: "700" }],
+          "headline-lg": ["32px", { lineHeight: "1.2", letterSpacing: "-0.03em", fontWeight: "600" }],
+          "headline-md": ["24px", { lineHeight: "1.2", letterSpacing: "-0.02em", fontWeight: "600" }],
+          "body-lg": ["18px", { lineHeight: "1.6", letterSpacing: "-0.01em", fontWeight: "400" }],
+          "body-md": ["16px", { lineHeight: "1.5", letterSpacing: "-0.01em", fontWeight: "400" }],
+          "label-bold": ["14px", { lineHeight: "1.2", letterSpacing: "0.02em", fontWeight: "600" }],
+          "label-sm": ["12px", { lineHeight: "1.2", letterSpacing: "0.01em", fontWeight: "500" }]
+        },
+        zIndex: { "dropdown": "1000", "sticky": "1100", "modal-backdrop": "1200", "modal": "1300", "toast": "1400", "tooltip": "1500" }
+      }
+    }
+  }
+</script>
+<!-- ===== Zambon OS shared base (source: /shared/zambon-base.html) ===== -->
+<style id="zambon-base">
+  :root { --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); }
+  body { background-color: #121414; color: #e2e2e2; }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #333535; border-radius: 4px; }
+  .glass-card { background: rgba(30,32,32,0.6); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.06); transition: border-color 200ms var(--ease-out), transform 200ms var(--ease-out); }
+  .glow-lime { box-shadow: 0 0 20px rgba(195,205,23,0.15); }
+  .z-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.625rem 1.5rem; border-radius: 1rem; font-family: Poppins; font-weight: 600; font-size: 14px; letter-spacing: 0.02em; cursor: pointer; white-space: nowrap; transition: background-color 160ms var(--ease-out), color 160ms var(--ease-out), border-color 160ms var(--ease-out), transform 160ms var(--ease-out), box-shadow 200ms var(--ease-out); }
+  .z-btn:active { transform: scale(0.97); }
+  .z-btn--primary { background: #c3cd17; color: #303300; border: 1px solid transparent; }
+  .z-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  @media (hover: hover) and (pointer: fine) { .z-btn--primary:hover { background: #dfea3a; box-shadow: 0 0 28px rgba(195,205,23,0.35); } }
+  .z-input { width: 100%; background: rgba(26,28,28,0.5); color: #e2e2e2; border: none; border-bottom: 2px solid #474834; border-radius: 0.5rem 0.5rem 0 0; padding: 0.5rem 0.75rem; font-family: Poppins; font-size: 16px; transition: border-color 200ms ease, background-color 200ms ease; }
+  .z-input::placeholder { color: #92927a; }
+  .z-input:focus { outline: none; border-bottom-color: #c3cd17; background: rgba(26,28,28,0.8); box-shadow: none; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } }
+
+  /* ===== Login-specific — "flight deck" split layout ===== */
+  .login-shell { display: grid; grid-template-columns: 1.05fr 0.95fr; width: 100%; min-height: 100vh; min-height: 100dvh; }
+  /* below 900px collapse to a single column and hide the brand panel */
+  @media (max-width: 900px) { .login-shell { grid-template-columns: 1fr; } .login-brand { display: none; } }
+
+  /* Left: brand panel */
+  .login-brand { position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; padding: clamp(2rem, 4vw, 3.5rem); border-right: 1px solid rgba(255,255,255,0.06); }
+  .brand-mark { font-family: Poppins; font-weight: 900; letter-spacing: -0.05em; font-size: clamp(3rem, 6.5vw, 5.5rem); line-height: 0.92; color: #e2e2e2; }
+  /* engineered technical grid */
+  .login-brand::before { content: ""; position: absolute; inset: 0; background-image: linear-gradient(rgba(195,205,23,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(195,205,23,0.06) 1px, transparent 1px); background-size: 48px 48px; mask-image: radial-gradient(ellipse 80% 80% at 30% 40%, #000 30%, transparent 75%); -webkit-mask-image: radial-gradient(ellipse 80% 80% at 30% 40%, #000 30%, transparent 75%); }
+  .login-bloom { position: absolute; width: 620px; height: 620px; border-radius: 9999px; background: radial-gradient(circle, rgba(195,205,23,0.16), transparent 62%); filter: blur(30px); top: -140px; left: -120px; animation: bloom-drift 18s var(--ease-in-out) infinite alternate; }
+  @keyframes bloom-drift { from { transform: translate(0,0); } to { transform: translate(90px, 70px); } }
+  .brand-mark span { color: #c3cd17; }
+  .scan-line { position: absolute; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(195,205,23,0.5), transparent); top: 0; animation: scan 6s var(--ease-in-out) infinite; }
+  @keyframes scan { 0% { top: 12%; opacity: 0; } 20% { opacity: 1; } 80% { opacity: 1; } 100% { top: 88%; opacity: 0; } }
+
+  /* Right: form panel */
+  .login-form-panel { display: flex; align-items: center; justify-content: center; padding: 2rem 1.5rem; position: relative; min-height: 100dvh; }
+  @media (max-width: 480px) { .login-form-panel { padding: 1.5rem 1.25rem; align-items: flex-start; padding-top: max(2rem, env(safe-area-inset-top)); } }
+  /* very short viewports: allow the panel to scroll instead of clipping */
+  @media (max-height: 640px) { .login-form-panel { align-items: flex-start; padding-top: 1.5rem; padding-bottom: 1.5rem; } }
+
+  /* staggered entrance */
+  .fade-up { animation: fade-up 520ms var(--ease-out) both; }
+  .d1 { animation-delay: 60ms; } .d2 { animation-delay: 130ms; } .d3 { animation-delay: 200ms; } .d4 { animation-delay: 270ms; } .d5 { animation-delay: 340ms; }
+  @keyframes fade-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* input group with floating icon that lights up on focus-within */
+  .field { position: relative; }
+  .field .field-icon { position: absolute; left: 0.75rem; top: 2.15rem; color: #92927a; transition: color 200ms ease; pointer-events: none; z-index: 10; font-size: 20px; }
+  .field:focus-within .field-icon { color: #c3cd17; }
+  .field .toggle-pass { position: absolute; right: 0.5rem; top: 1.9rem; color: #92927a; padding: 0.35rem; border-radius: 0.5rem; transition: color 160ms ease, background 160ms ease; cursor: pointer; }
+  .field .toggle-pass:hover { color: #e2e2e2; background: rgba(255,255,255,0.06); }
+
+  .status-dot { width: 7px; height: 7px; border-radius: 9999px; background: #c3cd17; box-shadow: 0 0 8px rgba(195,205,23,0.8); animation: blink 2.4s ease-in-out infinite; }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+</style>
+</head>
+<body class="bg-background text-on-surface font-['Poppins'] antialiased">
+<div class="login-shell">
+
+  <!-- ============ LEFT — brand / flight deck ============ -->
+  <section class="login-brand">
+    <div class="login-bloom"></div>
+    <div class="scan-line"></div>
+
+    <!-- top: system tag -->
+    <div class="relative flex items-center gap-3 fade-up d1">
+      <span class="status-dot"></span>
+      <span class="font-mono text-[11px] tracking-[0.35em] uppercase text-on-surface-variant">Sistema en línea</span>
+    </div>
+
+    <!-- center: brand -->
+    <div class="relative fade-up d2">
+      <p class="font-mono text-[11px] tracking-[0.4em] uppercase text-primary-container mb-5">Motor de Incentivos</p>
+      <h1 class="brand-mark">Zam<span>bon</span></h1>
+    </div>
+
+    <!-- bottom: meta -->
+    <div class="relative flex items-center justify-between fade-up d3">
+      <span class="font-mono text-[11px] text-on-surface-variant">Zambon Colombia S.A.</span>
+      <span class="font-mono text-[11px] text-on-surface-variant">v1.0 · 2025</span>
+    </div>
+  </section>
+
+  <!-- ============ RIGHT — sign-in form ============ -->
+  <section class="login-form-panel">
+    <main class="w-full max-w-[400px]">
+      <!-- compact brand (shown only when the left panel is hidden, <900px) -->
+      <div class="max-[900px]:flex hidden flex-col items-center text-center mb-8 fade-up d1">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="status-dot"></span>
+          <span class="font-mono text-[10px] tracking-[0.3em] uppercase text-on-surface-variant">Sistema en línea</span>
+        </div>
+        <h1 class="text-[clamp(2.75rem,14vw,3.75rem)] font-black tracking-tighter leading-none text-primary-container">Zam<span class="text-on-surface">bon</span></h1>
+        <p class="font-mono text-[10px] tracking-[0.35em] uppercase text-primary-container mt-3">Motor de Incentivos</p>
+      </div>
+
+      <div class="mb-8 fade-up d2">
+        <h2 class="font-headline-lg text-headline-lg text-on-surface">Iniciar sesión</h2>
+        <p class="text-on-surface-variant text-body-md mt-1">Ingresa con tu usuario corporativo.</p>
+      </div>
+
+      <!-- POST /auth/login -->
+      <form class="flex flex-col gap-1.5">
+        <div class="field fade-up d3 mb-3">
+          <label class="font-label-bold text-label-bold text-on-surface-variant ml-1 block mb-1.5" for="username">Usuario</label>
+          <span class="material-symbols-outlined field-icon">badge</span>
+          <input class="z-input pl-10" id="username" name="username" autocomplete="username" placeholder="cédula o usuario" required type="text"/>
+        </div>
+
+        <div class="field fade-up d4 mb-2">
+          <div class="flex justify-between items-end ml-1 mb-1.5">
+            <label class="font-label-bold text-label-bold text-on-surface-variant" for="password">Contraseña</label>
+            <a class="font-label-sm text-label-sm text-primary-container hover:text-primary transition-colors" href="#">¿Olvidaste tu acceso?</a>
+          </div>
+          <span class="material-symbols-outlined field-icon">lock</span>
+          <input class="z-input pl-10 pr-11" id="password" name="password" autocomplete="current-password" placeholder="••••••••" required type="password"/>
+          <button type="button" class="toggle-pass" aria-label="Mostrar contraseña" onclick="(function(b){var i=document.getElementById('password');var s=b.querySelector('span');if(i.type==='password'){i.type='text';s.textContent='visibility_off';}else{i.type='password';s.textContent='visibility';}})(this)">
+            <span class="material-symbols-outlined text-[20px]">visibility</span>
+          </button>
+        </div>
+
+        <!-- error slot (hidden until 401 from backend) -->
+        <div id="login-error" class="hidden items-center gap-2 text-error text-label-sm bg-error-container/20 border border-error/20 rounded-lg px-3 py-2 mt-1">
+          <span class="material-symbols-outlined text-[16px]">error</span>
+          <span>Credenciales inválidas o usuario inactivo.</span>
+        </div>
+
+        <button id="login-submit" class="z-btn z-btn--primary w-full mt-5 py-[14px] group fade-up d5" type="submit">
+          <span id="login-submit-label">Ingresar</span>
+          <span class="material-symbols-outlined text-[20px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+        </button>
+      </form>
+
+      <div class="mt-10 pt-5 border-t border-white/5 flex items-center justify-between fade-up d5">
+        <p class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-[16px]">support_agent</span>Soporte TI interno
+        </p>
+        <span class="font-mono text-[10px] text-on-surface-variant/60 tracking-wider">SSL · JWT</span>
+      </div>
+    </main>
+  </section>
+
+</div>
+
+<!-- ===== Conexión real con la API (POST /auth/login) ===== -->
+<script src="../shared/api.js"></script>
+<script>
+  (function () {
+    // Si ya hay sesión activa, entra directo.
+    if (ZambonAPI.getToken()) {
+      location.href = '/home/code.html';
+      return;
+    }
+
+    var form = document.querySelector('form');
+    var btn = document.getElementById('login-submit');
+    var label = document.getElementById('login-submit-label');
+    var errorBox = document.getElementById('login-error');
+    var errorText = errorBox ? errorBox.querySelector('span:last-child') : null;
+
+    function showError(msg) {
+      if (!errorBox) return;
+      if (errorText && msg) errorText.textContent = msg;
+      errorBox.classList.remove('hidden');
+      errorBox.classList.add('flex');
+    }
+    function hideError() {
+      if (!errorBox) return;
+      errorBox.classList.add('hidden');
+      errorBox.classList.remove('flex');
+    }
+    function setLoading(on) {
+      btn.disabled = on;
+      if (label) label.textContent = on ? 'Ingresando…' : 'Ingresar';
+    }
+
+    async function submit(e) {
+      if (e) e.preventDefault();
+      hideError();
+      var username = document.getElementById('username').value.trim();
+      var password = document.getElementById('password').value;
+      if (!username || !password) {
+        showError('Ingresa usuario y contraseña.');
+        return;
+      }
+      setLoading(true);
+      try {
+        var data = await ZambonAPI.login(username, password);
+        location.href = ZambonAPI.homePathForRole(data.user && data.user.roles);
+      } catch (err) {
+        if (err.status === 401) {
+          showError('Credenciales inválidas o usuario inactivo.');
+        } else {
+          showError('No se pudo conectar con el servidor. Intenta de nuevo.');
+        }
+        setLoading(false);
+      }
+    }
+
+    form.addEventListener('submit', submit);
+    btn.addEventListener('click', submit);
+  })();
+</script>
+</body></html>

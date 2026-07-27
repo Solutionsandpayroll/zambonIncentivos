@@ -1,0 +1,499 @@
+// ============================================================================
+//  Sistema de Incentivos Zambon — Esquema Prisma
+//  Fuente: diseno-relacional.md + calculocomisiones.xlsx
+//
+//  Convenciones:
+//   - Modelos en PascalCase (Prisma), tablas físicas en snake_case (@@map).
+//   - Campos en camelCase (Prisma), columnas en snake_case (@map).
+//   - Dinero: Decimal(14,2). Porcentajes/factores: Decimal(9,6).
+//   - Todo parámetro que cambia por periodo se versiona por period_id.
+//   - Nada de auth/RLS de Supabase: esto es "un Postgres cualquiera".
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // conexión pooled (app)
+  directUrl = env("DIRECT_URL") // conexión directa (migraciones)
+}
+
+// ============================================================================
+//  ENUMS
+// ============================================================================
+
+enum PeriodType {
+  MONTH
+  CYCLE
+}
+
+enum ConditionType {
+  NEW_HIRE
+  ZONE_CHANGE
+  MANUAL_ADJUSTMENT
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+enum BatchStatus {
+  PENDING // archivo recibido, aún no validado
+  PROCESSING // validando / importando
+  IMPORTED // importación exitosa
+  ERROR // el lote quedó con errores
+}
+
+enum CalculationStatus {
+  DRAFT
+  CALCULATED
+  CLOSED // versión sellada, no se recalcula
+}
+
+enum ComponentType {
+  MEDICINE
+  ORDER_TAKING
+  SELL_OUT
+  INSTALLATION
+  OTHER
+}
+
+// ============================================================================
+//  1. PERSONAS Y ORGANIZACIÓN
+// ============================================================================
+
+model Person {
+  personId       String   @id @default(uuid()) @map("person_id")
+  documentType   String?  @map("document_type")
+  documentNumber String   @unique @map("document_number")
+  firstName      String   @map("first_name")
+  lastName       String   @map("last_name")
+  fullName       String?  @map("full_name")
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  employee Employee?
+
+  @@index([documentNumber])
+  @@map("person")
+}
+
+model Employee {
+  employeeId              String    @id @default(uuid()) @map("employee_id")
+  personId                String    @unique @map("person_id")
+  employeeCode            String    @unique @map("employee_code")
+  hireDate                DateTime? @map("hire_date") @db.Date
+  terminationDate         DateTime? @map("termination_date") @db.Date
+  baseSalary              Decimal   @map("base_salary") @db.Decimal(14, 2)
+  zoneId                  String?   @map("zone_id")
+  positionId              String?   @map("position_id")
+  currentTeamAssignmentId String?   @map("current_team_assignment_id")
+  active                  Boolean   @default(true)
+
+  person   Person    @relation(fields: [personId], references: [personId])
+  zone     Zone?     @relation(fields: [zoneId], references: [zoneId])
+  position Position? @relation(fields: [positionId], references: [positionId])
+
+  teamAssignments    EmployeeTeamAssignment[]
+  salesTransactions  SalesTransaction[]
+  componentTargets   TeamComponentTarget[]
+  novelties          AbsenceOrNovelty[]
+  paymentConditions  EmployeePaymentCondition[]
+  calculationHeaders IncentiveCalculationHeader[]
+  appUser            AppUser?
+
+  managerLinks     OrgHierarchy[] @relation("ManagerLinks")
+  subordinateLinks OrgHierarchy[] @relation("SubordinateLinks")
+
+  @@index([employeeCode])
+  @@index([zoneId])
+  @@map("employee")
+}
+
+model EmployeeTeamAssignment {
+  employeeTeamAssignmentId String    @id @default(uuid()) @map("employee_team_assignment_id")
+  employeeId               String    @map("employee_id")
+  teamId                   String    @map("team_id")
+  validFrom                DateTime  @map("valid_from") @db.Date
+  validTo                  DateTime? @map("valid_to") @db.Date
+  isPrimary                Boolean   @default(true) @map("is_primary")
+  active                   Boolean   @default(true)
+
+  employee Employee @relation(fields: [employeeId], references: [employeeId])
+  team     Team     @relation(fields: [teamId], references: [teamId])
+
+  @@index([employeeId])
+  @@index([teamId])
+  @@map("employee_team_assignment")
+}
+
+model Team {
+  teamId   String  @id @default(uuid()) @map("team_id")
+  teamCode String  @unique @map("team_code")
+  teamName String  @map("team_name")
+  active   Boolean @default(true)
+
+  assignments        EmployeeTeamAssignment[]
+  componentWeights   TeamComponentWeight[]
+  calculationHeaders IncentiveCalculationHeader[]
+
+  @@map("team")
+}
+
+model Position {
+  positionId   String  @id @default(uuid()) @map("position_id")
+  positionName String  @map("position_name")
+  description  String?
+  active       Boolean @default(true)
+
+  employees Employee[]
+
+  @@map("position")
+}
+
+model Region {
+  regionId   String  @id @default(uuid()) @map("region_id")
+  regionName String  @map("region_name")
+  active     Boolean @default(true)
+
+  zones Zone[]
+
+  @@map("region")
+}
+
+model Zone {
+  zoneId   String  @id @default(uuid()) @map("zone_id")
+  zoneName String  @map("zone_name")
+  regionId String  @map("region_id")
+  active   Boolean @default(true)
+
+  region    Region     @relation(fields: [regionId], references: [regionId])
+  employees Employee[]
+
+  @@index([regionId])
+  @@map("zone")
+}
+
+model OrgHierarchy {
+  orgHierarchyId        String    @id @default(uuid()) @map("org_hierarchy_id")
+  managerEmployeeId     String    @map("manager_employee_id")
+  subordinateEmployeeId String    @map("subordinate_employee_id")
+  validFrom             DateTime  @map("valid_from") @db.Date
+  validTo               DateTime? @map("valid_to") @db.Date
+  active                Boolean   @default(true)
+
+  manager     Employee @relation("ManagerLinks", fields: [managerEmployeeId], references: [employeeId])
+  subordinate Employee @relation("SubordinateLinks", fields: [subordinateEmployeeId], references: [employeeId])
+
+  @@index([managerEmployeeId, subordinateEmployeeId])
+  @@map("org_hierarchy")
+}
+
+model EmployeePaymentCondition {
+  employeePaymentConditionId String        @id @default(uuid()) @map("employee_payment_condition_id")
+  employeeId                 String        @map("employee_id")
+  periodId                   String        @map("period_id")
+  conditionType              ConditionType @map("condition_type")
+  apply80Percent             Boolean       @default(false) @map("apply_80_percent")
+  apply20Percent             Boolean       @default(false) @map("apply_20_percent")
+  notes                      String?
+  createdAt                  DateTime      @default(now()) @map("created_at")
+
+  employee Employee @relation(fields: [employeeId], references: [employeeId])
+  period   Period   @relation(fields: [periodId], references: [periodId])
+
+  @@index([periodId, employeeId])
+  @@map("employee_payment_condition")
+}
+
+// ============================================================================
+//  2. SEGURIDAD Y USUARIOS
+// ============================================================================
+
+model AppUser {
+  userId       String     @id @default(uuid()) @map("user_id")
+  employeeId   String?    @unique @map("employee_id") // nullable: usuarios técnicos
+  username     String     @unique
+  passwordHash String     @map("password_hash")
+  userStatus   UserStatus @default(ACTIVE) @map("user_status")
+  lastLoginAt  DateTime?  @map("last_login_at")
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  employee        Employee?          @relation(fields: [employeeId], references: [employeeId])
+  roles           UserRole[]
+  uploadedBatches SalesUploadBatch[]
+
+  @@map("app_user")
+}
+
+model Role {
+  roleId      String  @id @default(uuid()) @map("role_id")
+  roleName    String  @unique @map("role_name") // ADMIN, NOMINA, GERENTE, COORDINADOR, EMPLEADO
+  description String?
+
+  userRoles UserRole[]
+
+  @@map("role")
+}
+
+model UserRole {
+  userRoleId String @id @default(uuid()) @map("user_role_id")
+  userId     String @map("user_id")
+  roleId     String @map("role_id")
+
+  user AppUser @relation(fields: [userId], references: [userId])
+  role Role    @relation(fields: [roleId], references: [roleId])
+
+  @@unique([userId, roleId])
+  @@map("user_role")
+}
+
+// ============================================================================
+//  3. PERIODOS Y PARÁMETROS HISTÓRICOS
+// ============================================================================
+
+model Period {
+  periodId    String     @id @default(uuid()) @map("period_id")
+  periodYear  Int        @map("period_year")
+  periodMonth Int        @map("period_month")
+  periodType  PeriodType @default(MONTH) @map("period_type")
+  cycleNumber Int?       @map("cycle_number")
+  startDate   DateTime   @map("start_date") @db.Date
+  endDate     DateTime   @map("end_date") @db.Date
+  isClosed    Boolean    @default(false) @map("is_closed")
+
+  componentWeights   TeamComponentWeight[]
+  curvePays          CurvePay[]
+  componentTargets   TeamComponentTarget[]
+  salesBatches       SalesUploadBatch[]
+  salesTransactions  SalesTransaction[]
+  novelties          AbsenceOrNovelty[]
+  paymentConditions  EmployeePaymentCondition[]
+  calculationHeaders IncentiveCalculationHeader[]
+
+  @@unique([periodYear, periodMonth, periodType])
+  @@map("period")
+}
+
+model TeamComponentWeight {
+  teamComponentWeightId String    @id @default(uuid()) @map("team_component_weight_id")
+  teamId                String    @map("team_id")
+  componentId           String    @map("component_id")
+  periodId              String    @map("period_id")
+  weightPercent         Decimal   @map("weight_percent") @db.Decimal(9, 6) // los pesos de un equipo deben sumar 1.0
+  validFrom             DateTime? @map("valid_from") @db.Date
+  validTo               DateTime? @map("valid_to") @db.Date
+
+  team      Team           @relation(fields: [teamId], references: [teamId])
+  component SalesComponent @relation(fields: [componentId], references: [componentId])
+  period    Period         @relation(fields: [periodId], references: [periodId])
+
+  @@unique([teamId, componentId, periodId])
+  @@map("team_component_weight")
+}
+
+// ============================================================================
+//  4. CATÁLOGOS COMERCIALES
+// ============================================================================
+
+model SalesComponent {
+  componentId   String        @id @default(uuid()) @map("component_id")
+  componentCode String        @unique @map("component_code")
+  componentName String        @map("component_name")
+  componentType ComponentType @map("component_type")
+  active        Boolean       @default(true)
+
+  weights            TeamComponentWeight[]
+  curvePays          CurvePay[]
+  targets            TeamComponentTarget[]
+  salesTransactions  SalesTransaction[]
+  calculationDetails IncentiveCalculationDetail[]
+
+  @@map("sales_component")
+}
+
+// Curva de pago: mapeo punto-a-punto de % cumplimiento -> % pago, por periodo.
+// El Excel usa pasos de 0.01 (0.90 -> 0.50 ... 1.20 -> 1.50) con tope >120% = 1.50.
+// El motor busca el escalón cuyo min_compliance_percent <= cumplimiento (redondeado)
+// y toma su pay_percent; por encima del último escalón aplica is_ceiling.
+model CurvePay {
+  curvePayId           String  @id @default(uuid()) @map("curve_pay_id")
+  periodId             String  @map("period_id")
+  componentId          String? @map("component_id") // null = aplica a todos los componentes
+  minCompliancePercent Decimal @map("min_compliance_percent") @db.Decimal(9, 6)
+  payPercent           Decimal @map("pay_percent") @db.Decimal(9, 6)
+  isCeiling            Boolean @default(false) @map("is_ceiling") // fila ">120%"
+  active               Boolean @default(true)
+
+  period    Period          @relation(fields: [periodId], references: [periodId])
+  component SalesComponent? @relation(fields: [componentId], references: [componentId])
+
+  @@index([periodId, minCompliancePercent])
+  @@map("curve_pay")
+}
+
+// Cuota objetivo por empleado, componente y periodo.
+// Puede fijarse en Admin o llegar en el archivo mensual (upsert).
+model TeamComponentTarget {
+  teamComponentTargetId String   @id @default(uuid()) @map("team_component_target_id")
+  employeeId            String   @map("employee_id")
+  componentId           String   @map("component_id")
+  periodId              String   @map("period_id")
+  quotaValue            Decimal  @map("quota_value") @db.Decimal(14, 2)
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  employee  Employee       @relation(fields: [employeeId], references: [employeeId])
+  component SalesComponent @relation(fields: [componentId], references: [componentId])
+  period    Period         @relation(fields: [periodId], references: [periodId])
+
+  @@unique([employeeId, componentId, periodId])
+  @@index([periodId, employeeId, componentId])
+  @@map("team_component_target")
+}
+
+// ============================================================================
+//  5. VENTAS Y SOPORTE OPERATIVO
+// ============================================================================
+
+model SalesUploadBatch {
+  salesUploadBatchId String      @id @default(uuid()) @map("sales_upload_batch_id")
+  periodId           String      @map("period_id")
+  uploadedByUserId   String      @map("uploaded_by_user_id")
+  fileName           String      @map("file_name")
+  fileHash           String      @map("file_hash")
+  sourceFormat       String?     @map("source_format")
+  status             BatchStatus @default(PENDING)
+  uploadedAt         DateTime    @default(now()) @map("uploaded_at")
+
+  period       Period             @relation(fields: [periodId], references: [periodId])
+  uploadedBy   AppUser            @relation(fields: [uploadedByUserId], references: [userId])
+  transactions SalesTransaction[]
+
+  @@index([periodId])
+  @@index([fileHash])
+  @@map("sales_upload_batch")
+}
+
+model SalesTransaction {
+  salesTransactionId String    @id @default(uuid()) @map("sales_transaction_id")
+  salesUploadBatchId String    @map("sales_upload_batch_id")
+  employeeId         String    @map("employee_id")
+  componentId        String    @map("component_id")
+  periodId           String    @map("period_id")
+  saleValue          Decimal   @map("sale_value") @db.Decimal(14, 2)
+  saleDate           DateTime? @map("sale_date") @db.Date
+  createdAt          DateTime  @default(now()) @map("created_at")
+
+  batch     SalesUploadBatch @relation(fields: [salesUploadBatchId], references: [salesUploadBatchId])
+  employee  Employee         @relation(fields: [employeeId], references: [employeeId])
+  component SalesComponent   @relation(fields: [componentId], references: [componentId])
+  period    Period           @relation(fields: [periodId], references: [periodId])
+
+  @@index([periodId, employeeId, componentId])
+  @@map("sales_transaction")
+}
+
+model AbsenceOrNovelty {
+  noveltyId    String    @id @default(uuid()) @map("novelty_id")
+  employeeId   String    @map("employee_id")
+  periodId     String    @map("period_id")
+  noveltyType  String    @map("novelty_type") // incapacidad, licencia, cambio de zona, etc.
+  startDate    DateTime? @map("start_date") @db.Date
+  endDate      DateTime? @map("end_date") @db.Date
+  daysAffected Int?      @map("days_affected")
+  impactType   String?   @map("impact_type")
+  notes        String?
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  employee Employee @relation(fields: [employeeId], references: [employeeId])
+  period   Period   @relation(fields: [periodId], references: [periodId])
+
+  @@index([periodId, employeeId])
+  @@map("absence_or_novelty")
+}
+
+// ============================================================================
+//  6. CÁLCULO DE INCENTIVOS (RESULTADOS VERSIONADOS)
+// ============================================================================
+
+model IncentiveCalculationHeader {
+  incentiveCalculationHeaderId String            @id @default(uuid()) @map("incentive_calculation_header_id")
+  employeeId                   String            @map("employee_id")
+  periodId                     String            @map("period_id")
+  teamId                       String            @map("team_id")
+  calculationStatus            CalculationStatus @default(DRAFT) @map("calculation_status")
+  baseSalary                   Decimal           @map("base_salary") @db.Decimal(14, 2)
+
+  component80Theoretical Decimal @map("component_80_theoretical") @db.Decimal(14, 2)
+  component20Theoretical Decimal @map("component_20_theoretical") @db.Decimal(14, 2)
+  component80Result      Decimal @map("component_80_result") @db.Decimal(14, 2)
+  component20Result      Decimal @map("component_20_result") @db.Decimal(14, 2)
+  totalIncentive         Decimal @map("total_incentive") @db.Decimal(14, 2)
+  guaranteedPayApplied   Boolean @default(false) @map("guaranteed_pay_applied")
+
+  executionKpiName           String?  @map("execution_kpi_name")
+  executionKpiResult         Boolean? @map("execution_kpi_result")
+  executionCompliancePercent Decimal? @map("execution_compliance_percent") @db.Decimal(9, 6)
+  executionPayMonthly        Boolean  @default(false) @map("execution_pay_monthly")
+  executionCycleMultiplier   Int      @default(4) @map("execution_cycle_multiplier")
+
+  calculationVersion Int      @default(1) @map("calculation_version")
+  calculatedAt       DateTime @default(now()) @map("calculated_at")
+
+  employee Employee                     @relation(fields: [employeeId], references: [employeeId])
+  period   Period                       @relation(fields: [periodId], references: [periodId])
+  team     Team                         @relation(fields: [teamId], references: [teamId])
+  details  IncentiveCalculationDetail[]
+
+  @@unique([employeeId, periodId, calculationVersion])
+  @@index([periodId, employeeId])
+  @@map("incentive_calculation_header")
+}
+
+model IncentiveCalculationDetail {
+  incentiveCalculationDetailId String  @id @default(uuid()) @map("incentive_calculation_detail_id")
+  incentiveCalculationHeaderId String  @map("incentive_calculation_header_id")
+  componentId                  String  @map("component_id")
+  quotaValue                   Decimal @map("quota_value") @db.Decimal(14, 2)
+  saleValue                    Decimal @map("sale_value") @db.Decimal(14, 2)
+  compliancePercent            Decimal @map("compliance_percent") @db.Decimal(9, 6)
+  curvePayPercent              Decimal @map("curve_pay_percent") @db.Decimal(9, 6)
+  weightedComponentPercent     Decimal @map("weighted_component_percent") @db.Decimal(9, 6)
+  componentIncentiveValue      Decimal @map("component_incentive_value") @db.Decimal(14, 2)
+
+  header    IncentiveCalculationHeader @relation(fields: [incentiveCalculationHeaderId], references: [incentiveCalculationHeaderId], onDelete: Cascade)
+  component SalesComponent             @relation(fields: [componentId], references: [componentId])
+
+  @@index([incentiveCalculationHeaderId])
+  @@map("incentive_calculation_detail")
+}
+
+// ============================================================================
+//  7. AUDITORÍA ADMINISTRATIVA
+// ============================================================================
+
+// Bitácora de cambios administrativos (quién, cuándo, qué acción, sobre qué
+// entidad y con qué motivo). Registra novedades, condiciones de pago,
+// reprocesos y cierres. Solo-append: nunca se edita ni se borra.
+model AdminAuditLog {
+  auditLogId String   @id @default(uuid()) @map("audit_log_id")
+  userId     String?  @map("user_id") // usuario que ejecutó la acción
+  username   String?  @map("username") // denormalizado, para lectura estable
+  action     String // NOVELTY_CREATE, PAYMENT_CONDITION_CREATE, REPROCESS, PERIOD_CLOSE...
+  entityType String   @map("entity_type") // absence_or_novelty, period, etc.
+  entityId   String?  @map("entity_id")
+  periodId   String?  @map("period_id")
+  reason     String?
+  metadata   Json? // detalle libre de la acción (payload resumido)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([action])
+  @@index([periodId])
+  @@map("admin_audit_log")
+}

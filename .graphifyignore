@@ -1,0 +1,27 @@
+# Credenciales y secretos — NUNCA mapear
+.env
+.env.local
+.env.*.local
+.env.example
+
+# Dependencias y build
+node_modules/
+dist/
+build/
+.next/
+
+# Prisma generado (el schema.prisma SÍ se mapea; lo generado no)
+prisma/migrations/
+generated/
+
+# Binarios y multimedia pesada
+*.mp4
+*.png
+*.jpg
+*.jpeg
+*.xlsx
+*.pdf
+
+# Salidas del propio Graphify
+graphify_output/
+*.graphify.json

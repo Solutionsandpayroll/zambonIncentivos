@@ -1,0 +1,204 @@
+<!--
+  Zambon OS — Shared base styles, canonical components and animation system.
+  Paste the <style id="zambon-base"> block below into the <head> of every page,
+  after the tailwind-config block. All pages share these class definitions so
+  sidebar / topbar / buttons / cards / animations stay identical everywhere.
+-->
+<style id="zambon-base">
+  /* ----- Motion tokens (custom easings, not browser defaults) ----- */
+  :root {
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+    --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  body { background-color: #121414; color: #e2e2e2; }
+
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+  }
+
+  /* ----- Custom scrollbar ----- */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #333535; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #474834; }
+
+  /* ============================================================
+     GLASS SURFACES  (single definition — no per-page variants)
+     ============================================================ */
+  .glass-card {
+    background: rgba(30, 32, 32, 0.6);          /* surface-container @ 60% */
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.06); /* ghost border */
+    transition: border-color 200ms var(--ease-out),
+                transform 200ms var(--ease-out);
+  }
+  .glow-lime { box-shadow: 0 0 20px rgba(195, 205, 23, 0.15); }
+
+  /* ============================================================
+     SIDEBAR  (.z-sidebar / .z-nav-item / .z-nav-item--active)
+     ============================================================ */
+  .z-sidebar {
+    position: fixed; left: 0; top: 0;
+    height: 100vh; width: 16rem;
+    display: flex; flex-direction: column;
+    padding: 2rem 0;
+    background: rgba(30, 32, 32, 0.6);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    z-index: 1100; /* sticky tier */
+  }
+  .z-nav-item {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.75rem 1.5rem;
+    color: #c8c8ae;                 /* on-surface-variant */
+    font-family: Poppins; font-weight: 500; font-size: 14px;
+    position: relative;
+    transition: color 150ms ease, background-color 150ms ease;
+  }
+  .z-nav-item .material-symbols-outlined { font-size: 20px; }
+  .z-nav-item:active { transform: scale(0.97); }
+  /* Active item: tint + lime text + 3px left indicator via background,
+     NOT a border-left accent. */
+  .z-nav-item--active {
+    color: #c3cd17;
+    background: rgba(195, 205, 23, 0.12);
+    font-weight: 600;
+  }
+  .z-nav-item--active::before {
+    content: "";
+    position: absolute; left: 0; top: 0.5rem; bottom: 0.5rem;
+    width: 3px; border-radius: 0 3px 3px 0;
+    background: #c3cd17;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .z-nav-item:not(.z-nav-item--active):hover {
+      color: #e2e2e2;
+      background: rgba(255, 255, 255, 0.05);
+    }
+  }
+
+  /* ============================================================
+     TOP APP BAR
+     ============================================================ */
+  .z-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    width: 100%; height: 4rem; padding: 0 2rem;
+    position: sticky; top: 0;
+    background: rgba(12, 15, 15, 0.7);   /* surface-container-lowest @ 70% */
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    z-index: 1100;
+  }
+
+  /* ============================================================
+     BUTTONS  (.z-btn + variant)
+     ============================================================ */
+  .z-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+    padding: 0.625rem 1.5rem;
+    border-radius: 1rem;               /* rounded-lg token */
+    font-family: Poppins; font-weight: 600; font-size: 14px; letter-spacing: 0.02em;
+    cursor: pointer; white-space: nowrap;
+    transition: background-color 160ms var(--ease-out),
+                color 160ms var(--ease-out),
+                border-color 160ms var(--ease-out),
+                transform 160ms var(--ease-out);
+  }
+  .z-btn:active { transform: scale(0.97); }
+  .z-btn--primary {
+    background: #c3cd17; color: #303300; border: 1px solid transparent;
+  }
+  .z-btn--secondary {
+    background: transparent; color: #e2e2e2; border: 1px solid #c3cd17;
+  }
+  .z-btn--ghost {
+    background: rgba(255, 255, 255, 0.05); color: #e2e2e2; border: 1px solid transparent;
+  }
+  .z-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  @media (hover: hover) and (pointer: fine) {
+    .z-btn--primary:hover { background: #dfea3a; }
+    .z-btn--secondary:hover { background: rgba(195, 205, 23, 0.08); }
+    .z-btn--ghost:hover { background: rgba(255, 255, 255, 0.1); }
+  }
+
+  /* ============================================================
+     STATUS PILL
+     ============================================================ */
+  .z-pill {
+    display: inline-flex; align-items: center;
+    padding: 0.125rem 0.625rem; border-radius: 9999px;
+    font-family: Poppins; font-weight: 500; font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .z-pill--active {
+    background: rgba(195, 205, 23, 0.2);
+    border: 1px solid rgba(195, 205, 23, 0.3); color: #c3cd17;
+  }
+  .z-pill--muted {
+    background: #333535; border: 1px solid #474834; color: #c8c8ae;
+  }
+
+  /* ============================================================
+     PROGRESS BAR  (solid fill — no lime→cyan gradient)
+     ============================================================ */
+  .z-progress { height: 8px; width: 100%; background: #282a2b; border-radius: 9999px; overflow: hidden; }
+  .z-progress__fill {
+    height: 100%; background: #c3cd17; border-radius: 9999px;
+    transform-origin: left; animation: z-grow 600ms var(--ease-out) both;
+  }
+  @keyframes z-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+  /* ============================================================
+     INPUT  (dark bg, bottom border that glows lime on focus)
+     ============================================================ */
+  .z-input {
+    width: 100%;
+    background: rgba(26, 28, 28, 0.5); color: #e2e2e2;
+    border: none; border-bottom: 2px solid #474834;
+    border-radius: 0.5rem 0.5rem 0 0;
+    padding: 0.5rem 0.75rem;
+    font-family: Poppins; font-size: 16px;
+    transition: border-color 200ms ease;
+  }
+  .z-input::placeholder { color: #92927a; }
+  .z-input:focus { outline: none; border-bottom-color: #c3cd17; box-shadow: none; }
+
+  /* ============================================================
+     PAGE ENTRANCE  (fade + rise, staggered)
+     ============================================================ */
+  .z-rise { animation: z-rise 300ms var(--ease-out) both; }
+  .z-rise-1 { animation-delay: 40ms; }
+  .z-rise-2 { animation-delay: 80ms; }
+  .z-rise-3 { animation-delay: 120ms; }
+  .z-rise-4 { animation-delay: 160ms; }
+  @keyframes z-rise {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Card hover lift (pointer devices only) */
+  @media (hover: hover) and (pointer: fine) {
+    .glass-card--interactive:hover {
+      border-color: rgba(195, 205, 23, 0.3);
+      transform: translateY(-2px);
+    }
+  }
+
+  /* ============================================================
+     REDUCED MOTION
+     ============================================================ */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+    .glass-card--interactive:hover,
+    .z-btn:active, .z-nav-item:active { transform: none; }
+  }
+</style>
