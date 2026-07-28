@@ -16,6 +16,7 @@
     "check:db": "ts-node -r tsconfig-paths/register src/database/seed/check-db.ts",
     "seed:curve": "ts-node -r tsconfig-paths/register src/database/seed/seed-curve-pay.ts",
     "import:commissions": "ts-node -r tsconfig-paths/register src/database/seed/import-commissions.ts",
+    "create:users": "ts-node -r tsconfig-paths/register src/database/seed/create-users.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage"
