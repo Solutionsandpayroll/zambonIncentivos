@@ -293,15 +293,17 @@
   if (!ZambonAPI.requireAuth()) return;
   var A = ZambonAPI;
 
-  // Usuario en el sidebar
-  var user = A.getUser() || {};
-  setText('sidebar-user', user.username || '—');
-  setText('sidebar-role', (user.roles && user.roles[0]) || '—');
-
+  // Helpers del DOM. Deben declararse ANTES del primer uso: `el` es una var y
+  // vale undefined hasta esta línea, así que llamarla antes rompe setText.
   var el = function (id) { return document.getElementById(id); };
   function setText(id, v) { var n = el(id); if (n) n.textContent = v; }
   function show(id) { var n = el(id); if (n) { n.classList.remove('hidden'); n.classList.add('flex'); } }
   function hide(id) { var n = el(id); if (n) { n.classList.add('hidden'); n.classList.remove('flex'); } }
+
+  // Usuario en el sidebar
+  var user = A.getUser() || {};
+  setText('sidebar-user', user.username || '—');
+  setText('sidebar-role', (user.roles && user.roles[0]) || '—');
 
   var state = { periodId: '', teamId: '', headers: [], selectedId: null };
 
@@ -350,6 +352,7 @@
 
   function clearList() {
     var list = el('results-list');
+    if (!list) return;
     // Conserva los placeholders empty/loading; borra filas previas.
     Array.prototype.slice.call(list.querySelectorAll('.emp-row')).forEach(function (n) { n.remove(); });
   }
@@ -510,16 +513,22 @@
   }
 
   // ---- Eventos de filtro ----
-  el('filter-period').addEventListener('change', function (e) {
-    state.periodId = e.target.value;
-    var opt = e.target.options[e.target.selectedIndex];
-    setText('period-badge', state.periodId ? opt.textContent : '—');
-    loadResults();
-  });
-  el('filter-team').addEventListener('change', function (e) {
-    state.teamId = e.target.value;
-    loadResults();
-  });
+  var periodFilter = el('filter-period');
+  if (periodFilter) {
+    periodFilter.addEventListener('change', function (e) {
+      state.periodId = e.target.value;
+      var opt = e.target.options[e.target.selectedIndex];
+      setText('period-badge', state.periodId ? opt.textContent : '—');
+      loadResults();
+    });
+  }
+  var teamFilter = el('filter-team');
+  if (teamFilter) {
+    teamFilter.addEventListener('change', function (e) {
+      state.teamId = e.target.value;
+      loadResults();
+    });
+  }
 
   // ---- Init ----
   (async function init() {
