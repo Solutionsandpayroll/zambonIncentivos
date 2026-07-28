@@ -47,6 +47,41 @@ function parseArgs(): Args {
   return { apply: argv.includes('--apply'), limit, only };
 }
 
+const MIN_PASSWORD_LENGTH = 10;
+
+/**
+ * Exige una contraseña inicial utilizable antes de escribir nada.
+ *
+ * El mensaje incluye la sintaxis de PowerShell porque `VAR=valor comando` es
+ * de bash: en PowerShell la variable no llega al proceso y el script la ve
+ * ausente, sin que quede claro por qué.
+ */
+function assertTempPassword(): string {
+  const password = process.env.TEMP_PASSWORD ?? '';
+
+  if (!password) {
+    throw new Error(
+      'Falta TEMP_PASSWORD: es la contraseña inicial del lote.\n\n' +
+        '  PowerShell:\n' +
+        "    $env:TEMP_PASSWORD = 'MiClaveSegura2026'\n" +
+        '    npm run create:users -- --apply\n' +
+        '    $env:TEMP_PASSWORD = $null\n\n' +
+        '  Bash:\n' +
+        "    TEMP_PASSWORD='MiClaveSegura2026' npm run create:users -- --apply",
+    );
+  }
+
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    throw new Error(
+      `TEMP_PASSWORD tiene ${password.length} caracteres y se exigen al menos ` +
+        `${MIN_PASSWORD_LENGTH}. Será la clave de todas las cuentas del lote ` +
+        'hasta que cada persona entre y la cambie.',
+    );
+  }
+
+  return password;
+}
+
 async function loadEmployees(): Promise<EmployeeInput[]> {
   const employees = await prisma.employee.findMany({
     where: { active: true },
@@ -102,6 +137,11 @@ async function createUsers(plans: ProvisionPlan[], password: string): Promise<vo
 
 async function main(): Promise<void> {
   const args = parseArgs();
+
+  // Se valida ANTES de imprimir el plan: si falla al final, el error queda
+  // sepultado bajo 52 líneas de nombres y parece que la carga funcionó.
+  if (args.apply) assertTempPassword();
+
   const employees = await loadEmployees();
   const { plans: allPlans, skipped } = planProvisioning(employees);
 
@@ -153,12 +193,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  const password = process.env.TEMP_PASSWORD;
-  if (!password || password.length < 10) {
-    throw new Error(
-      'Define TEMP_PASSWORD con al menos 10 caracteres para la contraseña inicial del lote.',
-    );
-  }
+  const password = assertTempPassword();
 
   console.log('\n▸ CREANDO...');
   await createUsers(plans, password);
