@@ -134,7 +134,24 @@
     if (user && user.mustChangePassword) {
       showPasswordChangeModal();
     }
+
+    // Ajustes de barra y sidebar comunes a todas las pantallas. Se hacen aquí y
+    // no en fillSidebar() porque solo una de las cinco pantallas la invoca.
+    onReady(function () {
+      mountLogoutButton();
+      removeDeadTopbarIcons();
+    });
+
     return true;
+  }
+
+  /** Ejecuta cuando el DOM esté listo (los scripts corren antes del sidebar). */
+  function onReady(fn) {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', fn);
+    } else {
+      fn();
+    }
   }
 
   // ---- Cambio de contraseña obligatorio -----------------------------------
@@ -329,6 +346,78 @@
     });
     document.querySelectorAll('[data-user-role]').forEach(function (n) {
       n.textContent = (u.roles && u.roles[0]) || DASH;
+    });
+  }
+
+  /**
+   * Añade "Cerrar sesión" bajo el perfil del sidebar.
+   *
+   * Se inserta desde aquí y no en cada HTML para que las cinco pantallas con
+   * sidebar lo tengan igual sin poder desincronizarse.
+   */
+  function mountLogoutButton() {
+    // El bloque de perfil es el último hijo del sidebar (clase mt-auto).
+    var profile = document.querySelector('aside .mt-auto');
+    if (!profile) return;
+    // Se busca dentro del propio contenedor: requireAuth() puede ejecutarse más
+    // de una vez y no debe apilar botones.
+    if (profile.querySelector('#z-logout')) return;
+
+    var button = document.createElement('button');
+    button.id = 'z-logout';
+    button.type = 'button';
+    button.className = 'z-nav-item w-full mt-4';
+    button.style.cssText =
+      'display:flex;align-items:center;gap:.75rem;width:100%;padding:.6rem .5rem;' +
+      'border:0;background:transparent;color:rgba(255,255,255,.62);cursor:pointer;' +
+      'font:inherit;font-size:.875rem;border-radius:10px;text-align:left;' +
+      'transition:background-color .16s ease-out,color .16s ease-out;';
+    button.innerHTML =
+      '<span class="material-symbols-outlined" style="font-size:20px">logout</span>' +
+      'Cerrar sesión';
+
+    // Realce solo con ratón: en táctil el hover se queda pegado tras el toque.
+    if (window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+      button.addEventListener('mouseenter', function () {
+        button.style.backgroundColor = 'rgba(255,255,255,.06)';
+        button.style.color = '#fff';
+      });
+      button.addEventListener('mouseleave', function () {
+        button.style.backgroundColor = 'transparent';
+        button.style.color = 'rgba(255,255,255,.62)';
+      });
+    }
+
+    button.addEventListener('click', function () {
+      if (window.confirm('¿Cerrar sesión?')) logout();
+    });
+
+    profile.appendChild(button);
+  }
+
+  /**
+   * Retira los iconos decorativos de la barra superior (campana, engranaje y
+   * avatar): no tienen comportamiento asociado, y un control que no responde
+   * al clic se lee como una función rota. El perfil y el cierre de sesión
+   * viven en el sidebar.
+   */
+  function removeDeadTopbarIcons() {
+    var topbar = document.querySelector('.z-topbar');
+    if (!topbar) return;
+
+    topbar.querySelectorAll('button').forEach(function (btn) {
+      // Solo los que no tienen manejador propio ni destino declarado.
+      if (btn.id || btn.dataset.keep || btn.onclick) return;
+      var icon = btn.querySelector('.material-symbols-outlined');
+      var name = icon ? icon.textContent.trim() : '';
+      if (name === 'notifications' || name === 'settings') btn.remove();
+    });
+
+    // El avatar es un div sin acción: se identifica por el icono "person".
+    topbar.querySelectorAll('div').forEach(function (node) {
+      if (node.children.length !== 1) return;
+      var icon = node.querySelector('.material-symbols-outlined');
+      if (icon && icon.textContent.trim() === 'person') node.remove();
     });
   }
 
