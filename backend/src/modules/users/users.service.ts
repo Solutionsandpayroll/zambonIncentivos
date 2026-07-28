@@ -90,6 +90,8 @@ export class UsersService {
         username: dto.username,
         passwordHash,
         employeeId: dto.employeeId ?? null,
+        // La contraseña inicial la fija quien crea la cuenta, no su dueño.
+        mustChangePassword: true,
         roles: { create: roleIds.map((roleId) => ({ roleId })) },
       },
       select: USER_SELECT,
@@ -125,7 +127,11 @@ export class UsersService {
     const passwordHash = await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS);
     await this.prisma.appUser.update({
       where: { userId },
-      data: { passwordHash },
+      data: {
+        passwordHash,
+        // La contraseña la fijó un tercero: el usuario debe cambiarla al entrar.
+        mustChangePassword: true,
+      },
     });
   }
 
@@ -149,7 +155,11 @@ export class UsersService {
     const passwordHash = await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS);
     await this.prisma.appUser.update({
       where: { userId },
-      data: { passwordHash },
+      data: {
+        passwordHash,
+        // La eligió el propio usuario: se levanta la exigencia de cambiarla.
+        mustChangePassword: false,
+      },
     });
   }
 

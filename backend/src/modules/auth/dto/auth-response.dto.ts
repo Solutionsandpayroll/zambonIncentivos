@@ -7,6 +7,8 @@ export interface AuthUserView {
   employeeId: string | null;
   roles: string[];
   scope: { type: ScopeType };
+  /** true = la contraseña la asignó un tercero y debe cambiarla ahora. */
+  mustChangePassword: boolean;
 }
 
 export interface LoginResponse {

@@ -224,6 +224,11 @@ model AppUser {
   lastLoginAt  DateTime?  @map("last_login_at")
   createdAt    DateTime   @default(now()) @map("created_at")
 
+  // Contraseña asignada por un tercero (alta masiva o reset del admin): el
+  // usuario debe cambiarla en su primer ingreso. Se apaga cuando él mismo la
+  // cambia, para que una clave temporal compartida no quede como permanente.
+  mustChangePassword Boolean @default(false) @map("must_change_password")
+
   employee        Employee?          @relation(fields: [employeeId], references: [employeeId])
   roles           UserRole[]
   uploadedBatches SalesUploadBatch[]

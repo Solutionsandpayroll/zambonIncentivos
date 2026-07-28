@@ -91,6 +91,9 @@ async function createUsers(plans: ProvisionPlan[], password: string): Promise<vo
         username: plan.username,
         passwordHash,
         userStatus: 'ACTIVE',
+        // Contraseña temporal compartida: el sistema exige cambiarla al entrar,
+        // para que no quede como clave permanente de la cuenta.
+        mustChangePassword: true,
         roles: { create: [{ roleId: roleIds.get(plan.role)! }] },
       },
     });

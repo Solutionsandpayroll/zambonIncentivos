@@ -118,13 +118,141 @@
     }
   }
 
-  /** Redirige al login si no hay sesión. Llamar al tope de cada página protegida. */
+  /**
+   * Redirige al login si no hay sesión. Llamar al tope de cada página protegida.
+   *
+   * Si la contraseña la asignó un tercero (alta masiva o reset del admin),
+   * muestra el diálogo de cambio obligatorio. Se hace aquí, en la capa común,
+   * para que valga en las 19 pantallas sin repetirlo en cada una.
+   */
   function requireAuth() {
     if (!getToken()) {
       redirectToLogin();
       return false;
     }
+    const user = getUser();
+    if (user && user.mustChangePassword) {
+      showPasswordChangeModal();
+    }
     return true;
+  }
+
+  // ---- Cambio de contraseña obligatorio -----------------------------------
+
+  /**
+   * Diálogo modal, sin salida posible salvo cambiando la contraseña: no se
+   * cierra con Escape, ni clic afuera, ni botón de cancelar. La única
+   * alternativa es cerrar sesión.
+   */
+  function showPasswordChangeModal() {
+    if (document.getElementById('zambon-pwd-modal')) return; // ya visible
+
+    const overlay = document.createElement('div');
+    overlay.id = 'zambon-pwd-modal';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-labelledby', 'zambon-pwd-title');
+    overlay.style.cssText =
+      'position:fixed;inset:0;z-index:9000;display:flex;align-items:center;' +
+      'justify-content:center;padding:1rem;background:rgba(15,23,42,.75);' +
+      'backdrop-filter:blur(2px)';
+
+    overlay.innerHTML = [
+      '<div style="background:#fff;border-radius:14px;max-width:26rem;width:100%;',
+      'padding:1.75rem;box-shadow:0 20px 45px rgba(15,23,42,.28)">',
+      '<h2 id="zambon-pwd-title" style="margin:0 0 .5rem;font-size:1.15rem;',
+      'font-weight:650;color:#0f172a">Cambia tu contraseña</h2>',
+      '<p style="margin:0 0 1.25rem;font-size:.875rem;line-height:1.5;color:#475569">',
+      'Tu contraseña actual fue asignada por un administrador. Para proteger tu ',
+      'cuenta, define una nueva antes de continuar.</p>',
+      '<form id="zambon-pwd-form" novalidate>',
+      '<label style="display:block;font-size:.8rem;font-weight:600;color:#334155;',
+      'margin-bottom:.3rem">Contraseña actual</label>',
+      '<input id="zambon-pwd-current" type="password" autocomplete="current-password" ',
+      'style="width:100%;padding:.6rem .75rem;border:1px solid #cbd5e1;border-radius:8px;',
+      'font-size:.9rem;margin-bottom:.9rem" required>',
+      '<label style="display:block;font-size:.8rem;font-weight:600;color:#334155;',
+      'margin-bottom:.3rem">Nueva contraseña</label>',
+      '<input id="zambon-pwd-new" type="password" autocomplete="new-password" ',
+      'style="width:100%;padding:.6rem .75rem;border:1px solid #cbd5e1;border-radius:8px;',
+      'font-size:.9rem;margin-bottom:.9rem" required>',
+      '<label style="display:block;font-size:.8rem;font-weight:600;color:#334155;',
+      'margin-bottom:.3rem">Repite la nueva contraseña</label>',
+      '<input id="zambon-pwd-repeat" type="password" autocomplete="new-password" ',
+      'style="width:100%;padding:.6rem .75rem;border:1px solid #cbd5e1;border-radius:8px;',
+      'font-size:.9rem" required>',
+      '<p id="zambon-pwd-error" role="alert" style="display:none;margin:.75rem 0 0;',
+      'font-size:.8rem;color:#b91c1c"></p>',
+      '<button id="zambon-pwd-submit" type="submit" style="width:100%;margin-top:1.25rem;',
+      'padding:.7rem;border:0;border-radius:8px;background:#0f172a;color:#fff;',
+      'font-size:.9rem;font-weight:600;cursor:pointer">Guardar y continuar</button>',
+      '<button id="zambon-pwd-logout" type="button" style="width:100%;margin-top:.5rem;',
+      'padding:.55rem;border:0;border-radius:8px;background:transparent;color:#64748b;',
+      'font-size:.8rem;cursor:pointer">Cerrar sesión</button>',
+      '</form></div>',
+    ].join('');
+
+    document.body.appendChild(overlay);
+    // Evita que la página de fondo se desplace mientras el diálogo está abierto.
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const el = (id) => document.getElementById(id);
+    const errorBox = el('zambon-pwd-error');
+    const submit = el('zambon-pwd-submit');
+    setTimeout(() => el('zambon-pwd-current').focus(), 50);
+
+    function fail(message) {
+      errorBox.textContent = message;
+      errorBox.style.display = 'block';
+    }
+
+    el('zambon-pwd-logout').addEventListener('click', function () {
+      document.body.style.overflow = previousOverflow;
+      logout();
+    });
+
+    el('zambon-pwd-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      errorBox.style.display = 'none';
+
+      const currentPassword = el('zambon-pwd-current').value;
+      const newPassword = el('zambon-pwd-new').value;
+      const repeat = el('zambon-pwd-repeat').value;
+
+      if (newPassword.length < 8) {
+        return fail('La nueva contraseña debe tener al menos 8 caracteres.');
+      }
+      if (newPassword !== repeat) {
+        return fail('Las dos contraseñas nuevas no coinciden.');
+      }
+      if (newPassword === currentPassword) {
+        return fail('La nueva contraseña debe ser distinta de la actual.');
+      }
+
+      submit.disabled = true;
+      submit.textContent = 'Guardando…';
+      try {
+        await request('PATCH', '/users/me/password', { currentPassword, newPassword });
+
+        // El backend ya bajó el flag; se refleja en la sesión local para que el
+        // diálogo no reaparezca al navegar a otra pantalla.
+        const user = getUser() || {};
+        user.mustChangePassword = false;
+        localStorage.setItem(USER_KEY, JSON.stringify(user));
+
+        document.body.style.overflow = previousOverflow;
+        overlay.remove();
+      } catch (err) {
+        submit.disabled = false;
+        submit.textContent = 'Guardar y continuar';
+        fail(
+          err && err.message
+            ? err.message
+            : 'No se pudo cambiar la contraseña. Inténtalo de nuevo.',
+        );
+      }
+    });
   }
 
   async function login(username, password) {
@@ -247,6 +375,7 @@
     login,
     logout,
     requireAuth,
+    showPasswordChangeModal,
     getUser,
     getToken,
     clearSession,

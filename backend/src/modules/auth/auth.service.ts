@@ -68,7 +68,7 @@ export class AuthService {
 
     return {
       ...this.issueTokens(payload),
-      user: this.toUserView(payload),
+      user: this.toUserView(payload, user.mustChangePassword),
     };
   }
 
@@ -101,7 +101,7 @@ export class AuthService {
 
     return {
       ...this.issueTokens(fresh),
-      user: this.toUserView(fresh),
+      user: this.toUserView(fresh, user.mustChangePassword),
     };
   }
 
@@ -116,14 +116,24 @@ export class AuthService {
     return;
   }
 
-  /** Perfil del usuario autenticado para GET /auth/me. */
-  me(user: AuthenticatedUser): AuthUserView {
+  /**
+   * Perfil del usuario autenticado para GET /auth/me.
+   * Consulta la base porque `mustChangePassword` cambia dentro de la vida del
+   * token: leerlo del JWT devolvería un valor viejo tras el cambio.
+   */
+  async me(user: AuthenticatedUser): Promise<AuthUserView> {
+    const fresh = await this.prisma.appUser.findUnique({
+      where: { userId: user.userId },
+      select: { mustChangePassword: true },
+    });
+
     return {
       userId: user.userId,
       username: user.username,
       employeeId: user.employeeId,
       roles: user.roles,
       scope: { type: user.scope.type },
+      mustChangePassword: fresh?.mustChangePassword ?? false,
     };
   }
 
@@ -142,13 +152,22 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  private toUserView(payload: JwtPayload): AuthUserView {
+  /**
+   * `mustChangePassword` se pasa aparte y NO viaja dentro del JWT: el token vive
+   * 15 minutos, así que un flag embebido seguiría diciendo "debe cambiarla"
+   * después de que el usuario ya la cambió. Se lee de la base en cada respuesta.
+   */
+  private toUserView(
+    payload: JwtPayload,
+    mustChangePassword = false,
+  ): AuthUserView {
     return {
       userId: payload.sub,
       username: payload.username,
       employeeId: payload.employeeId,
       roles: payload.roles,
       scope: { type: resolveScopeType(payload.roles) as ScopeType },
+      mustChangePassword,
     };
   }
 }
