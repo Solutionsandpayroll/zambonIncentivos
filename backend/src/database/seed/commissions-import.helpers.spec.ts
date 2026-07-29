@@ -7,6 +7,7 @@ import {
   inferComponentType,
   mapColumns,
   extractBlocks,
+  extractProductTable,
   SheetRow,
 } from './commissions-import.helpers';
 
@@ -97,6 +98,54 @@ describe('mapColumns', () => {
 
   it('devuelve null si falta alguna columna obligatoria', () => {
     expect(mapColumns([null, 'CEDULA', 'Representante'])).toBeNull();
+  });
+});
+
+describe('extractProductTable', () => {
+  /** Formato real de REP. XADAGO: una tabla por producto para todo el equipo. */
+  const sheet: SheetRow[] = [
+    [null, null, null, '1', '% Cuota Total Producto', null, null, null, 0.8],
+    [],
+    [null, null, 'PRODUCTO', '%', 'CUOTA', 'VENTA', '% CUMP', '% Tabla Pago', 'TOTAL'],
+    [null, null, 'XADAGO (COM + IND)', 0.8, 2279515481, 2182744995, 0.96, 0.8, 1074737.66],
+    [null, null, 'URSACOL', 0.2, 699164348, 1256377172, 1.8, 1.5, 503783.28],
+    [null, null, 'TOTAL', 1, null, null, null, null, 1578520.94],
+  ];
+
+  it('extrae los productos con su peso, cuota y venta', () => {
+    const products = extractProductTable(sheet);
+    expect(products).toHaveLength(2);
+    expect(products[0]).toEqual({
+      productName: 'XADAGO (COM + IND)',
+      weight: 0.8,
+      quota: 2279515481,
+      sale: 2182744995,
+      expectedTotal: 1074737.66,
+    });
+  });
+
+  it('descarta la fila TOTAL, que es un subtotal y no un producto', () => {
+    expect(extractProductTable(sheet).map((p) => p.productName)).not.toContain('TOTAL');
+  });
+
+  it('los pesos de la tabla suman 1', () => {
+    const sum = extractProductTable(sheet).reduce((s, p) => s + p.weight, 0);
+    expect(sum).toBeCloseTo(1, 5);
+  });
+
+  it('acepta la cabecera "Representante" que algunas hojas reusan para productos', () => {
+    const coorTm: SheetRow[] = [
+      [null, 'Representante', '%', 'CUOTA', 'VENTA', '% CUMP', '% TABLA', 'TOTAL'],
+      [null, 'Fluimucil Fmlia', 0.4, 14433.12, 15798, 1.09, 1.228, 1004137.93],
+      [null, '%Order Taking', 0.3, 274300000, 415350560, 1.51, 1.5, 919665],
+      [null, 'TOTAL', 1],
+    ];
+    const products = extractProductTable(coorTm);
+    expect(products.map((p) => p.productName)).toEqual(['Fluimucil Fmlia', '%Order Taking']);
+  });
+
+  it('devuelve vacío en una hoja que no usa este formato', () => {
+    expect(extractProductTable([[null, 'CEDULA', 'Representante', 'CUOTA']])).toEqual([]);
   });
 });
 

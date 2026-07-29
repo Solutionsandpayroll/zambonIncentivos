@@ -27,6 +27,7 @@ import * as fs from 'fs';
 import * as crypto from 'crypto';
 import {
   extractBlocks,
+  extractProductTable,
   toComponentCode,
   inferComponentType,
   cellToString,
@@ -128,6 +129,49 @@ interface Report {
   weightWarnings: string[];
 }
 
+/** Empleado del equipo, ya resuelto contra la base. */
+interface SheetMember {
+  employeeId: string;
+  documentNumber: string;
+  fullName: string;
+}
+
+/**
+ * Empleados listados en la cabecera de una hoja (tabla IDENTIFICACIÓN / NOMBRE
+ * EMPLEADO). En las hojas con tabla por producto, la cuota es del equipo y hay
+ * que repartirla entre estos miembros.
+ *
+ * Solo se devuelven los que existen en la base: un nombre suelto sin empleado
+ * asociado no puede recibir cuota.
+ */
+function extractSheetMembers(
+  rows: SheetRow[],
+  byDocument: Map<string, { employeeId: string; person: { fullName: string | null } }>,
+): SheetMember[] {
+  const members: SheetMember[] = [];
+  const seen = new Set<string>();
+
+  for (const row of rows) {
+    if (!row) continue;
+    for (let col = 1; col < row.length; col++) {
+      const value = cellToString(row[col]).trim();
+      if (!/^\d{6,11}$/.test(value) || seen.has(value)) continue;
+
+      const employee = byDocument.get(value);
+      if (!employee) continue;
+
+      seen.add(value);
+      members.push({
+        employeeId: employee.employeeId,
+        documentNumber: value,
+        fullName: employee.person.fullName ?? '',
+      });
+    }
+  }
+
+  return members;
+}
+
 async function analyze(args: Args): Promise<Report> {
   const filePath = resolveFile(args.file);
   const wb = new ExcelJS.Workbook();
@@ -218,8 +262,53 @@ async function analyze(args: Args): Promise<Report> {
       }
     }
 
+    // Segundo formato: una tabla por producto, cuya cuota aplica a todo el
+    // equipo. Solo se intenta si la hoja no traía bloques por empleado.
+    if (blocks.length === 0) {
+      const products = extractProductTable(rows);
+
+      if (products.length > 0) {
+        // Los miembros del equipo salen de la cabecera de la hoja (la tabla de
+        // IDENTIFICACIÓN / NOMBRE EMPLEADO que la encabeza).
+        const members = extractSheetMembers(rows, byDocument);
+
+        if (members.length === 0) {
+          report.unmappedSheets.push(`${ws.name} (tabla por producto sin empleados legibles)`);
+        } else {
+          for (const product of products) {
+            const code = toComponentCode(product.productName);
+            report.components.set(code, {
+              name: product.productName,
+              type: inferComponentType(product.productName),
+            });
+
+            weightSum += product.weight;
+            report.weights.push({
+              teamCode,
+              componentName: product.productName,
+              weight: product.weight,
+            });
+
+            for (const member of members) {
+              report.resolved.push({
+                sheet: ws.name,
+                teamCode,
+                componentName: product.productName,
+                employeeId: member.employeeId,
+                documentNumber: member.documentNumber,
+                employeeName: member.fullName,
+                quota: product.quota,
+                sale: product.sale,
+                expectedTotal: product.expectedTotal,
+              });
+            }
+          }
+        }
+      }
+    }
+
     // Los pesos de un equipo deben sumar 1.0 (regla del esquema).
-    if (blocks.length > 0 && Math.abs(weightSum - 1) > 0.001) {
+    if (weightSum > 0 && Math.abs(weightSum - 1) > 0.001) {
       report.weightWarnings.push(
         `${ws.name} (${teamCode}): los pesos suman ${weightSum.toFixed(4)}, se esperaba 1.0`,
       );
@@ -324,7 +413,10 @@ async function apply(report: Report, args: Args): Promise<void> {
           },
           update: { componentName: c.name },
         });
-        componentIds.set(c.name, saved.componentId);
+        // Se indexa por CÓDIGO, no por nombre: variantes de escritura del mismo
+        // producto ("% Order Taking" y "%Order Taking") comparten código, y
+        // guardar por nombre dejaría sin id a todas menos la última.
+        componentIds.set(code, saved.componentId);
       }
       console.log(`  ✔ ${componentIds.size} componentes`);
 
@@ -333,7 +425,7 @@ async function apply(report: Report, args: Args): Promise<void> {
       const teamIds = new Map(teams.map((t) => [t.teamCode, t.teamId]));
       for (const w of report.weights) {
         const teamId = teamIds.get(w.teamCode)!;
-        const componentId = componentIds.get(w.componentName)!;
+        const componentId = componentIds.get(toComponentCode(w.componentName))!;
         await tx.teamComponentWeight.upsert({
           where: {
             teamId_componentId_periodId: { teamId, componentId, periodId: period.periodId },
@@ -356,7 +448,7 @@ async function apply(report: Report, args: Args): Promise<void> {
       await tx.teamComponentTarget.createMany({
         data: report.resolved.map((r) => ({
           employeeId: r.employeeId,
-          componentId: componentIds.get(r.componentName)!,
+          componentId: componentIds.get(toComponentCode(r.componentName))!,
           periodId: period.periodId,
           quotaValue: new Prisma.Decimal(r.quota),
         })),
@@ -393,7 +485,7 @@ async function apply(report: Report, args: Args): Promise<void> {
         data: report.resolved.map((r) => ({
           salesUploadBatchId: batch.salesUploadBatchId,
           employeeId: r.employeeId,
-          componentId: componentIds.get(r.componentName)!,
+          componentId: componentIds.get(toComponentCode(r.componentName))!,
           periodId: period.periodId,
           saleValue: new Prisma.Decimal(r.sale),
         })),

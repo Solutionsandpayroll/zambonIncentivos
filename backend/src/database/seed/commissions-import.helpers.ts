@@ -173,6 +173,96 @@ export function mapColumns(headerRow: SheetRow): ColumnMap | null {
 }
 
 /**
+ * Un producto de una tabla "por producto" (segundo formato del libro).
+ *
+ * Estas hojas no repiten los datos por empleado: declaran una tabla única con
+ * una fila por producto, y esa cuota aplica a todo el equipo.
+ *
+ *     PRODUCTO            |  %  |   CUOTA    |   VENTA    | % CUMP | ...
+ *     XADAGO (COM + IND)  | 0.8 | 2279515481 | 2182744995 |  0.96  | ...
+ *     URSACOL             | 0.2 |  699164348 | 1256377172 |  1.80  | ...
+ *     TOTAL               |  1  |            |            |        | ...
+ */
+export interface ProductRow {
+  productName: string;
+  weight: number;
+  quota: number;
+  sale: number;
+  expectedTotal: number | null;
+}
+
+/** Cabeceras de la tabla por producto. */
+interface ProductColumnMap {
+  product: number;
+  weight: number;
+  quota: number;
+  sale: number;
+  total: number | null;
+}
+
+function mapProductColumns(headerRow: SheetRow): ProductColumnMap | null {
+  let product = -1;
+  let weight = -1;
+  let quota = -1;
+  let sale = -1;
+  let total: number | null = null;
+
+  for (let col = 1; col < headerRow.length; col++) {
+    const text = cellToString(headerRow[col]).trim().toUpperCase();
+    if (!text) continue;
+    // "PRODUCTO", y también "Representante" cuando la hoja reusa esa cabecera
+    // para listar productos (Coor. TM).
+    if (product < 0 && /^(PRODUCTO|REPRESENTANTE)/.test(text)) product = col;
+    else if (weight < 0 && text === '%') weight = col;
+    else if (quota < 0 && /^CUOTA/.test(text)) quota = col;
+    else if (sale < 0 && /^VENTA/.test(text)) sale = col;
+    else if (total === null && /^TOTAL/.test(text)) total = col;
+  }
+
+  if (product < 0 || weight < 0 || quota < 0 || sale < 0) return null;
+  return { product, weight, quota, sale, total };
+}
+
+/**
+ * Extrae la tabla por producto de una hoja. Devuelve vacío si la hoja no usa
+ * este formato (entonces corresponde `extractBlocks`).
+ *
+ * La tabla termina en la fila `TOTAL`, que es un subtotal y no un producto.
+ */
+export function extractProductTable(rows: SheetRow[]): ProductRow[] {
+  for (let i = 0; i < rows.length; i++) {
+    const columns = mapProductColumns(rows[i] ?? []);
+    if (!columns) continue;
+
+    const products: ProductRow[] = [];
+    for (let j = i + 1; j < rows.length; j++) {
+      const row = rows[j] ?? [];
+      const name = cellToString(row[columns.product]).trim();
+
+      if (!name) break; // fin de la tabla
+      if (/^TOTAL/i.test(name)) break; // subtotal, no es un producto
+
+      const weight = toNumber(row[columns.weight]);
+      const quota = toNumber(row[columns.quota]);
+      const sale = toNumber(row[columns.sale]);
+      if (weight === null || quota === null || sale === null) continue;
+
+      products.push({
+        productName: name,
+        weight,
+        quota,
+        sale,
+        expectedTotal: columns.total ? toNumber(row[columns.total]) : null,
+      });
+    }
+
+    if (products.length > 0) return products;
+  }
+
+  return [];
+}
+
+/**
  * Recorre una hoja de equipo y devuelve sus bloques de componente con datos.
  *
  * Un bloque se cierra en la primera fila sin documento válido, que es como el
