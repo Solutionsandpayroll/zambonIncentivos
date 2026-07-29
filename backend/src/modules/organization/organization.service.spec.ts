@@ -134,6 +134,83 @@ describe('OrganizationService.updateEmployee', () => {
   });
 });
 
+describe('OrganizationService — edición de estructura', () => {
+  function makeService(overrides: Record<string, any> = {}) {
+    const prisma = {
+      team: {
+        findUnique: jest.fn().mockResolvedValue({ teamId: 't1' }),
+        update: jest.fn().mockResolvedValue({ teamId: 't1' }),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      position: {
+        findUnique: jest.fn().mockResolvedValue({ positionId: 'c1' }),
+        update: jest.fn().mockResolvedValue({ positionId: 'c1' }),
+      },
+      region: {
+        findUnique: jest.fn().mockResolvedValue({ regionId: 'r1' }),
+        update: jest.fn().mockResolvedValue({ regionId: 'r1' }),
+      },
+      zone: {
+        findUnique: jest.fn().mockResolvedValue({ zoneId: 'z1' }),
+        update: jest.fn().mockResolvedValue({ zoneId: 'z1' }),
+      },
+      ...overrides,
+    };
+    return { service: new OrganizationService(prisma as never, {} as never), prisma };
+  }
+
+  it('renombra un equipo', async () => {
+    const { service, prisma } = makeService();
+    await service.updateTeam('t1', { teamName: 'Nuevo nombre' });
+    expect(prisma.team.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { teamName: 'Nuevo nombre' } }),
+    );
+  });
+
+  it('desactiva en vez de borrar', async () => {
+    const { service, prisma } = makeService();
+    await service.updateTeam('t1', { active: false });
+    expect(prisma.team.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { active: false } }),
+    );
+  });
+
+  it('rechaza entidades inexistentes', async () => {
+    const cases: [string, () => Promise<unknown>, RegExp][] = [];
+    const t = makeService({ team: { findUnique: jest.fn().mockResolvedValue(null), update: jest.fn() } });
+    cases.push(['equipo', () => t.service.updateTeam('x', {}), /equipo no existe/i]);
+    const p = makeService({ position: { findUnique: jest.fn().mockResolvedValue(null), update: jest.fn() } });
+    cases.push(['cargo', () => p.service.updatePosition('x', {}), /cargo no existe/i]);
+    const z = makeService({ zone: { findUnique: jest.fn().mockResolvedValue(null), update: jest.fn() } });
+    cases.push(['zona', () => z.service.updateZone('x', {}), /zona no existe/i]);
+
+    for (const [, run, pattern] of cases) {
+      await expect(run()).rejects.toThrow(pattern);
+    }
+  });
+
+  it('rechaza mover una zona a una región inexistente', async () => {
+    const { service } = makeService({
+      region: { findUnique: jest.fn().mockResolvedValue(null), update: jest.fn() },
+    });
+    await expect(service.updateZone('z1', { regionId: 'r9' })).rejects.toThrow(
+      /región no existe/i,
+    );
+  });
+
+  it('los listados ocultan los inactivos salvo que se pidan', async () => {
+    const { service, prisma } = makeService();
+    await service.listTeams();
+    expect(prisma.team.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { active: true } }),
+    );
+    await service.listTeams(true);
+    expect(prisma.team.findMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({ where: {} }),
+    );
+  });
+});
+
 describe('OrganizationService.createZone', () => {
   it('rechaza crear zona con región inexistente', async () => {
     const prisma = {

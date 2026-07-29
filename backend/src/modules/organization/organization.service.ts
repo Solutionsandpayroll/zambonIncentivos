@@ -12,6 +12,10 @@ import {
   CreatePositionDto,
   CreateRegionDto,
   CreateZoneDto,
+  UpdateTeamDto,
+  UpdatePositionDto,
+  UpdateRegionDto,
+  UpdateZoneDto,
 } from './dto/structure.dto';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
@@ -159,34 +163,47 @@ export class OrganizationService {
   }
 
   // ---- Catálogos de estructura --------------------------------------------
-  listTeams() {
-    return this.prisma.team.findMany({ where: { active: true } });
+  /** Con includeInactive se ven los desactivados, para poder reactivarlos. */
+  listTeams(includeInactive = false) {
+    return this.prisma.team.findMany({
+      where: includeInactive ? {} : { active: true },
+      orderBy: { teamName: 'asc' },
+    });
   }
 
   createTeam(dto: CreateTeamDto) {
     return this.prisma.team.create({ data: { ...dto } });
   }
 
-  listPositions() {
-    return this.prisma.position.findMany({ where: { active: true } });
+  listPositions(includeInactive = false) {
+    return this.prisma.position.findMany({
+      where: includeInactive ? {} : { active: true },
+      orderBy: { positionName: 'asc' },
+    });
   }
 
   createPosition(dto: CreatePositionDto) {
     return this.prisma.position.create({ data: { ...dto } });
   }
 
-  listRegions() {
-    return this.prisma.region.findMany({ where: { active: true } });
+  listRegions(includeInactive = false) {
+    return this.prisma.region.findMany({
+      where: includeInactive ? {} : { active: true },
+      orderBy: { regionName: 'asc' },
+    });
   }
 
   createRegion(dto: CreateRegionDto) {
     return this.prisma.region.create({ data: { ...dto } });
   }
 
-  /** Zonas (ciudades) activas, para filtros y selects. */
-  listZones(regionId?: string) {
+  /** Zonas (ciudades) para filtros y selects. */
+  listZones(regionId?: string, includeInactive = false) {
     return this.prisma.zone.findMany({
-      where: { active: true, ...(regionId ? { regionId } : {}) },
+      where: {
+        ...(includeInactive ? {} : { active: true }),
+        ...(regionId ? { regionId } : {}),
+      },
       include: { region: true },
       orderBy: { zoneName: 'asc' },
     });
@@ -199,6 +216,48 @@ export class OrganizationService {
     if (!region) throw new NotFoundException('La región no existe');
     return this.prisma.zone.create({
       data: { zoneName: dto.zoneName, regionId: dto.regionId },
+    });
+  }
+
+  // ---- Edición de estructura ----------------------------------------------
+  //
+  // Ninguna entidad se borra: equipos, cargos y zonas están referenciados por
+  // empleados y por liquidaciones ya calculadas. `active: false` los saca de
+  // los listados conservando esas referencias intactas.
+
+  async updateTeam(teamId: string, dto: UpdateTeamDto) {
+    const team = await this.prisma.team.findUnique({ where: { teamId } });
+    if (!team) throw new NotFoundException('El equipo no existe');
+    return this.prisma.team.update({ where: { teamId }, data: { ...dto } });
+  }
+
+  async updatePosition(positionId: string, dto: UpdatePositionDto) {
+    const position = await this.prisma.position.findUnique({ where: { positionId } });
+    if (!position) throw new NotFoundException('El cargo no existe');
+    return this.prisma.position.update({ where: { positionId }, data: { ...dto } });
+  }
+
+  async updateRegion(regionId: string, dto: UpdateRegionDto) {
+    const region = await this.prisma.region.findUnique({ where: { regionId } });
+    if (!region) throw new NotFoundException('La región no existe');
+    return this.prisma.region.update({ where: { regionId }, data: { ...dto } });
+  }
+
+  async updateZone(zoneId: string, dto: UpdateZoneDto) {
+    const zone = await this.prisma.zone.findUnique({ where: { zoneId } });
+    if (!zone) throw new NotFoundException('La zona no existe');
+
+    if (dto.regionId) {
+      const region = await this.prisma.region.findUnique({
+        where: { regionId: dto.regionId },
+      });
+      if (!region) throw new NotFoundException('La región no existe');
+    }
+
+    return this.prisma.zone.update({
+      where: { zoneId },
+      data: { ...dto },
+      include: { region: true },
     });
   }
 

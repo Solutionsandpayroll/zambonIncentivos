@@ -9,6 +9,10 @@ import {
   CreatePositionDto,
   CreateRegionDto,
   CreateZoneDto,
+  UpdateTeamDto,
+  UpdatePositionDto,
+  UpdateRegionDto,
+  UpdateZoneDto,
 } from './dto/structure.dto';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
@@ -46,9 +50,14 @@ export class OrganizationController {
   }
 
   // ---- Estructura ---------------------------------------------------------
+  //
+  // Ninguna entidad se borra: están referenciadas por empleados y por
+  // liquidaciones ya calculadas. Los PATCH renombran y activan/desactivan.
+  // `?includeInactive=true` las muestra para poder reactivarlas.
+
   @Get('teams')
-  listTeams() {
-    return this.organization.listTeams();
+  listTeams(@Query('includeInactive') includeInactive?: string) {
+    return this.organization.listTeams(includeInactive === 'true');
   }
 
   @Post('teams')
@@ -57,9 +66,15 @@ export class OrganizationController {
     return this.organization.createTeam(dto);
   }
 
+  @Patch('teams/:id')
+  @Roles(AppRole.ADMIN)
+  updateTeam(@Param('id') id: string, @Body() dto: UpdateTeamDto) {
+    return this.organization.updateTeam(id, dto);
+  }
+
   @Get('positions')
-  listPositions() {
-    return this.organization.listPositions();
+  listPositions(@Query('includeInactive') includeInactive?: string) {
+    return this.organization.listPositions(includeInactive === 'true');
   }
 
   @Post('positions')
@@ -68,9 +83,15 @@ export class OrganizationController {
     return this.organization.createPosition(dto);
   }
 
+  @Patch('positions/:id')
+  @Roles(AppRole.ADMIN)
+  updatePosition(@Param('id') id: string, @Body() dto: UpdatePositionDto) {
+    return this.organization.updatePosition(id, dto);
+  }
+
   @Get('regions')
-  listRegions() {
-    return this.organization.listRegions();
+  listRegions(@Query('includeInactive') includeInactive?: string) {
+    return this.organization.listRegions(includeInactive === 'true');
   }
 
   @Post('regions')
@@ -79,9 +100,24 @@ export class OrganizationController {
     return this.organization.createRegion(dto);
   }
 
+  @Patch('regions/:id')
+  @Roles(AppRole.ADMIN)
+  updateRegion(@Param('id') id: string, @Body() dto: UpdateRegionDto) {
+    return this.organization.updateRegion(id, dto);
+  }
+
   @Get('zones')
-  listZones(@Query('regionId') regionId?: string) {
-    return this.organization.listZones(regionId);
+  listZones(
+    @Query('regionId') regionId?: string,
+    @Query('includeInactive') includeInactive?: string,
+  ) {
+    return this.organization.listZones(regionId, includeInactive === 'true');
+  }
+
+  @Patch('zones/:id')
+  @Roles(AppRole.ADMIN)
+  updateZone(@Param('id') id: string, @Body() dto: UpdateZoneDto) {
+    return this.organization.updateZone(id, dto);
   }
 
   @Post('zones')

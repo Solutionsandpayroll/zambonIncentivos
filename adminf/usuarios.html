@@ -108,6 +108,12 @@
   .sub-nav__item--active { background: rgba(195,205,23,0.12); color: #c3cd17; font-weight: 600; }
   .sub-nav__group { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #92927a; padding: 0.75rem 0.75rem 0.35rem; font-weight: 600; }
   .adm-tr { transition: background 150ms ease; }
+  .adm-act { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem;
+    margin-left: 0.25rem; border: 0; border-radius: 0.5rem; background: transparent; color: #c8c8ae;
+    cursor: pointer; transition: background-color 160ms var(--ease-out), color 160ms var(--ease-out); }
+  .adm-act .material-symbols-outlined { font-size: 18px; }
+  .adm-act:active { transform: scale(0.97); }
+  @media (hover: hover) and (pointer: fine) { .adm-act:hover { background: rgba(255,255,255,0.08); color: #e2e2e2; } }
   @media (hover: hover) and (pointer: fine) { .adm-tr:hover { background: rgba(255,255,255,0.03); } }
   /* chips de rol */
   .role-chip { display: inline-flex; align-items: center; padding: 0.1rem 0.5rem; border-radius: 9999px; font-size: 10px; font-weight: 600; letter-spacing: 0.03em; }
@@ -338,12 +344,68 @@
         '<td class="py-3 px-2">' + (roles || '—') + '</td>' +
         '<td class="py-3 px-2 mono text-[12px] text-on-surface-variant">' + fmtDate(u.lastLoginAt) + '</td>' +
         '<td class="py-3 px-2">' + estado + '</td>' +
-        '<td class="py-3 px-2 text-right"><button data-reset="' + u.userId + '" data-name="' + A.escapeHtml(u.username) + '" class="text-on-surface-variant hover:text-primary-container transition-colors" title="Restablecer contraseña"><span class="material-symbols-outlined text-[18px]">lock_reset</span></button></td>';
+        '<td class="py-3 px-2 text-right whitespace-nowrap">' +
+          '<button class="adm-act" data-act="roles" title="Cambiar roles">' +
+            '<span class="material-symbols-outlined">manage_accounts</span></button>' +
+          '<button class="adm-act" data-act="reset" title="Restablecer contraseña">' +
+            '<span class="material-symbols-outlined">lock_reset</span></button>' +
+          '<button class="adm-act" data-act="toggle" title="' +
+            (u.userStatus === 'ACTIVE' ? 'Desactivar' : 'Activar') + '">' +
+            '<span class="material-symbols-outlined">' +
+            (u.userStatus === 'ACTIVE' ? 'person_off' : 'person_check') + '</span></button>' +
+        '</td>';
+
+      tr.querySelector('[data-act="roles"]').addEventListener('click', function () { editRoles(u); });
+      tr.querySelector('[data-act="reset"]').addEventListener('click', function () { resetPassword(u.userId, u.username); });
+      tr.querySelector('[data-act="toggle"]').addEventListener('click', function () { toggleStatus(u); });
       body.appendChild(tr);
     });
-    body.querySelectorAll('[data-reset]').forEach(function (b) {
-      b.addEventListener('click', function () { resetPassword(b.dataset.reset, b.dataset.name); });
-    });
+  }
+
+  // ---- Acciones de fila ---------------------------------------------------
+
+  var ROLE_OPTIONS = ['ADMIN', 'NOMINA', 'GERENTE', 'COORDINADOR', 'EMPLEADO'];
+
+  /** Reemplaza el conjunto de roles del usuario. */
+  async function editRoles(user) {
+    var current = (user.roles || []).join(', ');
+    var answer = prompt(
+      'Roles de "' + user.username + '" separados por coma.\n' +
+        'Disponibles: ' + ROLE_OPTIONS.join(', '),
+      current,
+    );
+    if (answer === null) return;
+
+    var roleNames = answer.split(',').map(function (r) { return r.trim().toUpperCase(); }).filter(Boolean);
+    if (!roleNames.length) { A.toast('Debe conservar al menos un rol.', 'error'); return; }
+
+    var invalid = roleNames.filter(function (r) { return ROLE_OPTIONS.indexOf(r) === -1; });
+    if (invalid.length) { A.toast('Rol no válido: ' + invalid.join(', '), 'error'); return; }
+
+    try {
+      await A.patch('/users/' + user.userId, { roleNames: roleNames });
+      A.toast('Roles actualizados.');
+      load();
+    } catch (e) { A.toast(e.message || 'No se pudieron actualizar los roles.', 'error'); }
+  }
+
+  /**
+   * Activa o desactiva la cuenta. No hay borrado: el usuario queda ligado a
+   * lotes de carga y a la auditoría, y eliminarlo dejaría esos registros sin
+   * responsable. Un usuario INACTIVE no puede iniciar sesión.
+   */
+  async function toggleStatus(user) {
+    var deactivating = user.userStatus === 'ACTIVE';
+    var question = deactivating
+      ? '¿Desactivar el usuario "' + user.username + '"?\n\nNo podrá iniciar sesión. Su historial se conserva.'
+      : '¿Activar el usuario "' + user.username + '"?';
+    if (!A.confirmAction(question)) return;
+
+    try {
+      await A.patch('/users/' + user.userId, { userStatus: deactivating ? 'INACTIVE' : 'ACTIVE' });
+      A.toast(deactivating ? 'Usuario desactivado.' : 'Usuario activado.');
+      load();
+    } catch (e) { A.toast(e.message || 'No se pudo actualizar el usuario.', 'error'); }
   }
 
   async function resetPassword(id, name) {
