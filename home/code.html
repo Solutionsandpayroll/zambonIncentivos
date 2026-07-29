@@ -87,6 +87,15 @@
   @keyframes z-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
   .z-input { width: 100%; background: rgba(26,28,28,0.5); color: #e2e2e2; border: none; border-bottom: 2px solid #474834; border-radius: 0.5rem 0.5rem 0 0; padding: 0.5rem 0.75rem; font-family: Poppins; font-size: 16px; transition: border-color 200ms ease; }
   .z-input::placeholder { color: #92927a; }
+  /* Los <select> también usan .z-input. Sin estas reglas el desplegable nativo
+     de Windows pinta las opciones con el tema del sistema (fondo claro, texto
+     gris) y quedan casi ilegibles sobre la interfaz oscura. */
+  select.z-input { color: #e2e2e2; }
+  select.z-input option { background: #1a1c1c; color: #e2e2e2; }
+  .z-input:-webkit-autofill, .z-input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #e2e2e2;
+    -webkit-box-shadow: 0 0 0 1000px #1a1c1c inset;
+  }
   .z-input:focus { outline: none; border-bottom-color: #c3cd17; box-shadow: none; }
   .z-rise { animation: z-rise 300ms var(--ease-out) both; }
   .z-rise-1 { animation-delay: 40ms; } .z-rise-2 { animation-delay: 80ms; } .z-rise-3 { animation-delay: 120ms; } .z-rise-4 { animation-delay: 160ms; }

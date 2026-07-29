@@ -166,6 +166,15 @@
     transition: border-color 200ms ease;
   }
   .z-input::placeholder { color: #92927a; }
+  /* Los <select> también usan .z-input. Sin estas reglas el desplegable nativo
+     de Windows pinta las opciones con el tema del sistema (fondo claro, texto
+     gris) y quedan casi ilegibles sobre la interfaz oscura. */
+  select.z-input { color: #e2e2e2; }
+  select.z-input option { background: #1a1c1c; color: #e2e2e2; }
+  .z-input:-webkit-autofill, .z-input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #e2e2e2;
+    -webkit-box-shadow: 0 0 0 1000px #1a1c1c inset;
+  }
   .z-input:focus { outline: none; border-bottom-color: #c3cd17; box-shadow: none; }
 
   /* ============================================================
