@@ -107,9 +107,23 @@
   .sub-nav__item:hover { background: rgba(255,255,255,0.04); color: #e2e2e2; }
   .sub-nav__item--active { background: rgba(195,205,23,0.12); color: #c3cd17; font-weight: 600; }
   .sub-nav__group { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #92927a; padding: 0.75rem 0.75rem 0.35rem; font-weight: 600; }
-  .cell-input { width: 5.5rem; background: transparent; color: #e2e2e2; border: 1px solid transparent; border-radius: 0.4rem; padding: 0.3rem 0.45rem; font-family: 'JetBrains Mono'; font-size: 14px; text-align: right; transition: border-color 150ms ease, background 150ms ease; }
-  .cell-input:hover { border-color: rgba(255,255,255,0.1); }
+  /* Celda editable. `background: transparent` NO sirve en <input type="number">:
+     el navegador conserva su fondo blanco si no se declara uno opaco, y la
+     celda queda blanca sobre la interfaz oscura. */
+  .cell-input { width: 5.5rem; background: rgba(26,28,28,0.55); color: #e2e2e2; border: 1px solid rgba(255,255,255,0.07); border-radius: 0.5rem; padding: 0.4rem 0.6rem; font-family: 'JetBrains Mono', monospace; font-size: 14px; text-align: right; transition: border-color 160ms var(--ease-out), background-color 160ms var(--ease-out); }
+  .cell-input::placeholder { color: #92927a; }
   .cell-input:focus { outline: none; border-color: #c3cd17; background: rgba(195,205,23,0.06); }
+  .cell-input:-webkit-autofill, .cell-input:-webkit-autofill:focus { -webkit-text-fill-color: #e2e2e2; -webkit-box-shadow: 0 0 0 1000px #1a1c1c inset; }
+  @media (hover: hover) and (pointer: fine) { .cell-input:hover:not(:focus) { border-color: rgba(255,255,255,0.16); } }
+  /* Componente sin peso en este equipo: presente para poder asignarlo, pero en
+     segundo plano para que no compita con los que el equipo sí mide. */
+  .row-other { opacity: 0.55; }
+  .row-other:focus-within { opacity: 1; }
+  .group-head { padding: 0.9rem 0.5rem 0.35rem; font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.08em; color: #92927a; }
+  .group-head__count { display: inline-block; margin-left: 0.5rem; padding: 0.05rem 0.4rem;
+    border-radius: 9999px; background: rgba(255,255,255,0.06); color: #c8c8ae;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0; }
   /* barra de suma de pesos */
   .weight-bar { height: 10px; border-radius: 9999px; background: #282a2b; overflow: hidden; display: flex; }
   .weight-seg { height: 100%; }
@@ -333,6 +347,14 @@
     }
   }
 
+  /** Fila separadora que titula un grupo de componentes. */
+  function groupHeader(label, count) {
+    var tr = document.createElement('tr');
+    tr.innerHTML = '<td colspan="3" class="group-head">' + A.escapeHtml(label) +
+      '<span class="group-head__count">' + count + '</span></td>';
+    return tr;
+  }
+
   function renderRows(comps, wByComp) {
     var body = el('weights-body');
     body.innerHTML = '';
@@ -340,16 +362,37 @@
       body.innerHTML = '<tr><td colspan="3" class="py-4 text-center text-on-surface-variant text-sm">— No hay componentes. Crea el primero.</td></tr>';
       setSum(0); return;
     }
-    comps.forEach(function (c) {
-      var val = wByComp[c.componentId] != null ? wByComp[c.componentId] : 0;
+    // Los componentes DEL EQUIPO van primero; el resto queda debajo, plegado.
+    // Antes se mezclaban los 12 del catálogo con peso 0, y no había forma de
+    // ver de un vistazo cuáles mide realmente este equipo.
+    var mine = comps.filter(function (c) { return wByComp[c.componentId] != null; });
+    var others = comps.filter(function (c) { return wByComp[c.componentId] == null; });
+
+    function addRow(c, isMine) {
+      var val = wByComp[c.componentId];
       var tr = document.createElement('tr');
-      tr.className = 'border-b border-white/5';
+      tr.className = 'border-b border-white/5' + (isMine ? '' : ' row-other');
       tr.innerHTML =
-        '<td class="py-2.5 px-2 text-on-surface">' + A.escapeHtml(c.componentName) + '</td>' +
+        '<td class="py-2.5 px-2 ' + (isMine ? 'text-on-surface' : 'text-on-surface-variant') + '">' +
+          A.escapeHtml(c.componentName) + '</td>' +
         '<td class="py-2.5 px-2"><span class="z-pill z-pill--muted">' + A.escapeHtml(c.componentCode) + '</span></td>' +
-        '<td class="py-2.5 px-2 text-right"><input data-comp="' + c.componentId + '" type="number" step="0.01" min="0" max="1" class="cell-input" value="' + val + '"/></td>';
+        '<td class="py-2.5 px-2 text-right"><input data-comp="' + c.componentId +
+          '" type="number" step="0.01" min="0" max="1" class="cell-input" placeholder="—" value="' +
+          (val != null ? val : '') + '"/></td>';
       body.appendChild(tr);
-    });
+    }
+
+    if (mine.length) {
+      body.appendChild(groupHeader('Componentes de este equipo', mine.length));
+      mine.forEach(function (c) { addRow(c, true); });
+    }
+    if (others.length) {
+      body.appendChild(groupHeader(
+        mine.length ? 'Otros componentes del catálogo' : 'Catálogo — asigna un peso para incluirlo',
+        others.length,
+      ));
+      others.forEach(function (c) { addRow(c, false); });
+    }
     body.querySelectorAll('input[data-comp]').forEach(function (inp) {
       inp.addEventListener('input', recompute);
     });

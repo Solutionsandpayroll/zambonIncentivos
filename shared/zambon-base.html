@@ -178,6 +178,40 @@
   .z-input:focus { outline: none; border-bottom-color: #c3cd17; box-shadow: none; }
 
   /* ============================================================
+     CELL-INPUT  (celda editable dentro de una tabla: cuotas, pesos, curva)
+
+     `background: transparent` NO sirve aquí: en <input type="number"> los
+     navegadores conservan su fondo blanco cuando no se declara uno opaco,
+     y la celda queda blanca sobre la interfaz oscura. Por eso el fondo se
+     fija explícitamente, igual que el color del texto.
+     ============================================================ */
+  .cell-input {
+    width: 100%;
+    background: rgba(26, 28, 28, 0.55); color: #e2e2e2;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    text-align: right;
+    transition: border-color 160ms var(--ease-out), background-color 160ms var(--ease-out);
+  }
+  .cell-input::placeholder { color: #92927a; }
+  .cell-input:focus {
+    outline: none; border-color: #c3cd17; background: rgba(195, 205, 23, 0.06);
+  }
+  /* Celda sin valor: es un dato faltante, no un cero. */
+  .cell-input:placeholder-shown { border-color: rgba(255, 180, 171, 0.22); }
+  .cell-input:disabled { opacity: 0.45; cursor: not-allowed; }
+  /* Chrome pinta el relleno automático con su propio fondo claro. */
+  .cell-input:-webkit-autofill, .cell-input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #e2e2e2;
+    -webkit-box-shadow: 0 0 0 1000px #1a1c1c inset;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .cell-input:hover:not(:focus) { border-color: rgba(255, 255, 255, 0.16); }
+  }
+
+  /* ============================================================
      PAGE ENTRANCE  (fade + rise, staggered)
      ============================================================ */
   .z-rise { animation: z-rise 300ms var(--ease-out) both; }

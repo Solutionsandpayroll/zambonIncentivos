@@ -134,9 +134,10 @@
     font-weight: 500; color: #c3cd17; letter-spacing: 0.02em;
   }
   @media (hover: hover) and (pointer: fine) { .adm-tr:hover { background: rgba(255,255,255,0.03); } }
-  .cell-input { width: 7rem; background: transparent; color: #e2e2e2; border: 1px solid transparent; border-radius: 0.4rem; padding: 0.3rem 0.45rem; font-family: 'JetBrains Mono'; font-size: 13px; text-align: right; transition: border-color 150ms ease, background 150ms ease; }
-  .cell-input:hover { border-color: rgba(255,255,255,0.1); }
-  .cell-input:focus { outline: none; border-color: #c3cd17; background: rgba(195,205,23,0.06); }
+  /* La definición de .cell-input vive arriba, junto a .adm-tr: aquí había una
+     segunda con `background: transparent` que la pisaba por orden de cascada y
+     devolvía el fondo blanco del navegador. */
+  .cell-input:-webkit-autofill, .cell-input:-webkit-autofill:focus { -webkit-text-fill-color: #e2e2e2; -webkit-box-shadow: 0 0 0 1000px #1a1c1c inset; }
 </style>
 </head>
 <body class="bg-background text-on-surface font-['Poppins'] antialiased min-h-screen flex">

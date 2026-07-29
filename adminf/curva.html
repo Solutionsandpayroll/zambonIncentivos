@@ -109,9 +109,13 @@
   .sub-nav__item--active { background: rgba(195,205,23,0.12); color: #c3cd17; font-weight: 600; }
   .sub-nav__group { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #92927a; padding: 0.75rem 0.75rem 0.35rem; font-weight: 600; }
   /* input compacto de celda editable */
-  .cell-input { width: 100%; background: transparent; color: #e2e2e2; border: 1px solid transparent; border-radius: 0.4rem; padding: 0.3rem 0.45rem; font-family: 'JetBrains Mono'; font-size: 13px; text-align: right; transition: border-color 150ms ease, background 150ms ease; }
-  .cell-input:hover { border-color: rgba(255,255,255,0.1); }
+  /* Celda editable. `background: transparent` NO sirve en <input type="number">:
+     el navegador conserva su fondo blanco si no se declara uno opaco. */
+  .cell-input { width: 100%; background: rgba(26,28,28,0.55); color: #e2e2e2; border: 1px solid rgba(255,255,255,0.07); border-radius: 0.5rem; padding: 0.4rem 0.6rem; font-family: 'JetBrains Mono', monospace; font-size: 13px; text-align: right; transition: border-color 160ms var(--ease-out), background-color 160ms var(--ease-out); }
+  .cell-input::placeholder { color: #92927a; }
   .cell-input:focus { outline: none; border-color: #c3cd17; background: rgba(195,205,23,0.06); }
+  .cell-input:-webkit-autofill, .cell-input:-webkit-autofill:focus { -webkit-text-fill-color: #e2e2e2; -webkit-box-shadow: 0 0 0 1000px #1a1c1c inset; }
+  @media (hover: hover) and (pointer: fine) { .cell-input:hover:not(:focus) { border-color: rgba(255,255,255,0.16); } }
   .curve-tr:hover { background: rgba(255,255,255,0.02); }
   .curve-tr--ceiling { background: rgba(195,205,23,0.05); }
 </style>
