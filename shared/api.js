@@ -138,10 +138,79 @@
     // Ajustes de barra y sidebar comunes a todas las pantallas. Se hacen aquí y
     // no en fillSidebar() porque solo una de las cinco pantallas la invoca.
     onReady(function () {
+      applyNavPermissions();
       mountLogoutButton();
       removeDeadTopbarIcons();
     });
 
+    // Bloquea la pantalla si el rol no puede verla (entrada por URL directa).
+    return enforcePagePermission();
+  }
+
+  // ---- Permisos de navegación ---------------------------------------------
+
+  /**
+   * Qué secciones puede ver cada rol.
+   *
+   * Es una capa de presentación, no de seguridad: el backend ya rechaza con 403
+   * lo que no corresponde. Sirve para no ofrecer pantallas que fallarían al
+   * abrirse, que es lo que hace parecer que el sistema está roto.
+   */
+  var NAV_PERMISSIONS = {
+    ADMIN: ['home', 'calculof', 'resultsf', 'reportesf', 'adminf'],
+    NOMINA: ['home', 'calculof', 'resultsf', 'reportesf'],
+    GERENTE: ['home', 'resultsf', 'reportesf'],
+    COORDINADOR: ['home', 'resultsf', 'reportesf'],
+    EMPLEADO: ['home', 'resultsf'],
+  };
+
+  /** Secciones permitidas para el usuario actual (unión de sus roles). */
+  function allowedSections() {
+    var user = getUser() || {};
+    var roles = user.roles || [];
+    var allowed = {};
+    roles.forEach(function (role) {
+      (NAV_PERMISSIONS[role] || []).forEach(function (section) {
+        allowed[section] = true;
+      });
+    });
+    // Sin rol reconocido queda lo mínimo: su propio resumen y resultados.
+    if (Object.keys(allowed).length === 0) {
+      allowed.home = true;
+      allowed.resultsf = true;
+    }
+    return allowed;
+  }
+
+  /** Sección a la que apunta un enlace, deducida de su href. */
+  function sectionOfHref(href) {
+    var match = String(href || '').match(
+      /(home|calculof|resultsf|reportesf|adminf|loginf)/,
+    );
+    return match ? match[1] : null;
+  }
+
+  /** Oculta del menú lateral las secciones que el rol no puede abrir. */
+  function applyNavPermissions() {
+    var allowed = allowedSections();
+    document.querySelectorAll('a.z-nav-item').forEach(function (link) {
+      var section = sectionOfHref(link.getAttribute('href'));
+      if (section && !allowed[section]) link.remove();
+    });
+  }
+
+  /**
+   * Si se entra por URL directa a una pantalla no permitida, redirige al inicio
+   * en vez de dejar una pantalla que carga y falla con errores de permiso.
+   */
+  function enforcePagePermission() {
+    var section = sectionOfHref(location.pathname);
+    if (!section || section === 'loginf') return true;
+
+    if (!allowedSections()[section]) {
+      location.href = '/home/code.html';
+      return false;
+    }
     return true;
   }
 
