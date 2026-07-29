@@ -78,9 +78,15 @@ export class CatalogsService {
   }
 
   // ---- Pesos de componentes ----------------------------------------------
+  /**
+   * Pesos de un equipo en un periodo, con el componente incluido: la UI los usa
+   * para saber qué productos mide ese equipo, no el catálogo global.
+   */
   getComponentWeights(teamId: string, periodId: string) {
     return this.prisma.teamComponentWeight.findMany({
       where: { teamId, periodId },
+      include: { component: true },
+      orderBy: { weightPercent: 'desc' },
     });
   }
 

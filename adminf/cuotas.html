@@ -107,6 +107,32 @@
   .sub-nav__item--active { background: rgba(195,205,23,0.12); color: #c3cd17; font-weight: 600; }
   .sub-nav__group { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #92927a; padding: 0.75rem 0.75rem 0.35rem; font-weight: 600; }
   .adm-tr { transition: background 150ms ease; }
+  /* Celda editable de la matriz de cuotas. Sin estas reglas el navegador la
+     pinta con su propio fondo blanco y texto gris, que corta con el tema. */
+  .cell-input {
+    width: 100%; min-width: 6.5rem; text-align: right;
+    background: rgba(26,28,28,0.55); color: #e2e2e2;
+    border: 1px solid rgba(255,255,255,0.07); border-radius: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    transition: border-color 160ms var(--ease-out), background-color 160ms var(--ease-out);
+  }
+  .cell-input::placeholder { color: #92927a; }
+  .cell-input:focus {
+    outline: none; border-color: #c3cd17;
+    background: rgba(195,205,23,0.06);
+  }
+  /* Una cuota vacía es un dato faltante, no un cero: se marca en ámbar. */
+  .cell-input:placeholder-shown { border-color: rgba(255,180,171,0.22); }
+  @media (hover: hover) and (pointer: fine) {
+    .cell-input:hover:not(:focus) { border-color: rgba(255,255,255,0.16); }
+  }
+  /* Peso del componente bajo el título de su columna. */
+  .col-weight {
+    display: block; margin-top: 0.15rem;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    font-weight: 500; color: #c3cd17; letter-spacing: 0.02em;
+  }
   @media (hover: hover) and (pointer: fine) { .adm-tr:hover { background: rgba(255,255,255,0.03); } }
   .cell-input { width: 7rem; background: transparent; color: #e2e2e2; border: 1px solid transparent; border-radius: 0.4rem; padding: 0.3rem 0.45rem; font-family: 'JetBrains Mono'; font-size: 13px; text-align: right; transition: border-color 150ms ease, background 150ms ease; }
   .cell-input:hover { border-color: rgba(255,255,255,0.1); }
@@ -258,7 +284,10 @@
       var teams = await A.get('/teams');
       teams.forEach(function (t) { var o = document.createElement('option'); o.value = t.teamId; o.textContent = t.teamName; el('sel-team').appendChild(o); });
     } catch (e) {}
-    try { state.components = await A.get('/components'); } catch (e) {}
+    // Los componentes se leen de los PESOS del equipo, no del catálogo global:
+    // cada equipo mide 2 o 3 productos, y mostrar los 12 invita a cargar una
+    // cuota en un componente que ese equipo no liquida.
+    state.components = [];
   })();
 
   el('sel-period').addEventListener('change', function (e) { state.periodId = e.target.value; refresh(); });
@@ -273,11 +302,42 @@
     el('quotas-empty').classList.add('hidden');
     body.innerHTML = '<tr><td colspan="4" class="py-4 text-center text-on-surface-variant text-sm">Cargando…</td></tr>';
 
-    // Cabecera: una columna por componente
-    head.innerHTML = '<th class="font-label-bold py-2.5 px-2">Cédula</th><th class="font-label-bold py-2.5 px-2">Empleado</th>' +
-      state.components.map(function (c) { return '<th class="font-label-bold py-2.5 px-2 text-right">' + A.escapeHtml(c.componentName) + '</th>'; }).join('');
-
     try {
+      // Componentes del equipo en este periodo (sus pesos), no el catálogo
+      // completo: cada equipo mide solo 2 o 3 productos.
+      var weights = await A.get(
+        '/component-weights?teamId=' + encodeURIComponent(state.teamId) +
+        '&periodId=' + encodeURIComponent(state.periodId),
+      );
+      state.components = (weights || []).map(function (w) {
+        return {
+          componentId: w.componentId,
+          componentName: w.component ? w.component.componentName : w.componentId,
+          weightPercent: Number(w.weightPercent),
+        };
+      });
+
+      if (!state.components.length) {
+        head.innerHTML = '';
+        body.innerHTML = '';
+        el('quotas-empty').classList.remove('hidden');
+        el('quotas-empty').innerHTML =
+          '<p class="text-sm text-on-surface-variant">— Este equipo aún no tiene componentes definidos para el periodo.<br>' +
+          'Defínelos primero en <a class="text-primary-container underline" href="./pesos.html">Componentes y pesos</a>.</p>';
+        el('btn-save').disabled = true;
+        return;
+      }
+
+      // Cabecera: una columna por componente del equipo, con su peso.
+      head.innerHTML =
+        '<th class="font-label-bold py-2.5 px-2">Cédula</th>' +
+        '<th class="font-label-bold py-2.5 px-2">Empleado</th>' +
+        state.components.map(function (c) {
+          return '<th class="font-label-bold py-2.5 px-2 text-right">' +
+            A.escapeHtml(c.componentName) +
+            '<span class="col-weight">' + Math.round(c.weightPercent * 100) + '%</span></th>';
+        }).join('');
+
       var emps = await A.get('/employees?teamId=' + encodeURIComponent(state.teamId));
       var targets = await A.get('/targets?periodId=' + encodeURIComponent(state.periodId));
       // índice cuota por (empleado|componente)
@@ -295,7 +355,7 @@
         var name = p.fullName || ((p.firstName || '') + ' ' + (p.lastName || '')).trim();
         var cells = state.components.map(function (c) {
           var val = qByKey[e.employeeId + '|' + c.componentId];
-          return '<td class="py-2 px-2 text-right"><input data-emp="' + e.employeeId + '" data-comp="' + c.componentId + '" type="number" step="0.01" min="0" class="cell-input" value="' + (val != null ? val : '') + '"/></td>';
+          return '<td class="py-2 px-2 text-right"><input data-emp="' + e.employeeId + '" data-comp="' + c.componentId + '" type="number" step="0.01" min="0" class="cell-input" placeholder="—" title="' + A.escapeHtml(c.componentName) + '" value="' + (val != null ? val : '') + '"/></td>';
         }).join('');
         var tr = document.createElement('tr');
         tr.className = 'adm-tr border-b border-white/5';

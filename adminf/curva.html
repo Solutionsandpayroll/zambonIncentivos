@@ -316,7 +316,9 @@ La curva reemplaza los escalones del periodo/componente. Se registra en auditorÃ
     [1.2,1.5,true]
   ];
 
-  var state = { periodId: '', componentId: '' };
+  // existingSteps: cuÃ¡ntos escalones tiene ya el periodo, para advertir
+  // antes de reemplazar una curva vigente.
+  var state = { periodId: '', componentId: '', existingSteps: 0 };
 
   (async function init() {
     try {
@@ -345,8 +347,10 @@ La curva reemplaza los escalones del periodo/componente. Se registra en auditorÃ
     var q = '/curve-pay?periodId=' + encodeURIComponent(state.periodId) + (state.componentId ? '&componentId=' + encodeURIComponent(state.componentId) : '');
     try {
       var steps = await A.get(q);
+      state.existingSteps = (steps || []).length;
       renderSteps((steps || []).map(function (s) { return [Number(s.minCompliancePercent), Number(s.payPercent), s.isCeiling]; }));
     } catch (e) {
+      state.existingSteps = 0;
       renderSteps([]);
     }
   }
@@ -392,6 +396,18 @@ La curva reemplaza los escalones del periodo/componente. Se registra en auditorÃ
       steps.push({ minCompliancePercent: minC, payPercent: pay, isCeiling: ceil });
     });
     if (!valid || !steps.length) { A.toast('Todos los escalones deben tener cumplimiento y pago numÃ©ricos.', 'error'); return; }
+
+    // Guardar reemplaza la curva completa del periodo: si ya habÃ­a una, se
+    // advierte, porque cambiarla altera lo que cobra la gente.
+    if (state.existingSteps > 0) {
+      var ok = await A.confirmAction(
+        'Este periodo ya tiene una curva de ' + state.existingSteps + ' escalones.\n' +
+          'Guardar la reemplaza por completo por los ' + steps.length + ' actuales.',
+        { confirmLabel: 'Reemplazar curva', danger: true },
+      );
+      if (!ok) return;
+    }
+
     var payload = { periodId: state.periodId, componentId: state.componentId || null, steps: steps };
     try {
       await A.put('/curve-pay', payload);
