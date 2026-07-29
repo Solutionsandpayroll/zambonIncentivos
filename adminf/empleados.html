@@ -107,7 +107,13 @@
   .sub-nav__item:hover { background: rgba(255,255,255,0.04); color: #e2e2e2; }
   .sub-nav__item--active { background: rgba(195,205,23,0.12); color: #c3cd17; font-weight: 600; }
   .sub-nav__group { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #92927a; padding: 0.75rem 0.75rem 0.35rem; font-weight: 600; }
-  .adm-tr { transition: background 150ms ease; }
+ .adm-tr { transition: background 150ms ease; }
+  .adm-act { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem;
+    margin-left: 0.25rem; border: 0; border-radius: 0.5rem; background: transparent; color: #c8c8ae;
+    cursor: pointer; transition: background-color 160ms var(--ease-out), color 160ms var(--ease-out); }
+  .adm-act .material-symbols-outlined { font-size: 18px; }
+  .adm-act:active { transform: scale(0.97); }
+  @media (hover: hover) and (pointer: fine) { .adm-act:hover { background: rgba(255,255,255,0.08); color: #e2e2e2; } }
   @media (hover: hover) and (pointer: fine) { .adm-tr:hover { background: rgba(255,255,255,0.03); } }
 </style>
 </head>
@@ -215,6 +221,7 @@
 <th class="font-label-bold py-2.5 px-2">Zona</th>
 <th class="font-label-bold py-2.5 px-2 text-right">Salario base</th>
 <th class="font-label-bold py-2.5 px-2">Estado</th>
+<th class="font-label-bold py-2.5 px-2 text-right">Acciones</th>
 </tr>
 </thead>
 <tbody id="emp-body">
@@ -263,6 +270,7 @@
   var A = ZambonAPI; A.fillSidebar();
   var el = function (id) { return document.getElementById(id); };
   var all = [];
+  var editingId = null; // null = alta; con id = edición
 
   (async function init() {
     try {
@@ -283,7 +291,7 @@
 
   async function load() {
     var body = el('emp-body');
-    body.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-on-surface-variant text-sm">Cargando…</td></tr>';
+    body.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-on-surface-variant text-sm">Cargando…</td></tr>';
     var q = el('f-zone').value ? '?zoneId=' + encodeURIComponent(el('f-zone').value) : '';
     try {
       all = await A.get('/employees' + q);
@@ -291,7 +299,7 @@
       el('sum-salary').textContent = all.filter(function (e) { return Number(e.baseSalary) > 0; }).length;
       render();
     } catch (e) {
-      body.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-on-surface-variant text-sm">— No se pudieron cargar los empleados.</td></tr>';
+      body.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-on-surface-variant text-sm">— No se pudieron cargar los empleados.</td></tr>';
     }
   }
 
@@ -305,7 +313,7 @@
     var body = el('emp-body');
     body.innerHTML = '';
     el('emp-count').textContent = items.length + ' empleado' + (items.length === 1 ? '' : 's');
-    if (!items.length) { body.innerHTML = '<tr><td colspan="6" class="py-8 text-center text-on-surface-variant text-sm">— Sin empleados para este filtro.</td></tr>'; return; }
+    if (!items.length) { body.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-on-surface-variant text-sm">— Sin empleados para este filtro.</td></tr>'; return; }
     items.forEach(function (e) {
       var p = e.person || {};
       var name = p.fullName || ((p.firstName || '') + ' ' + (p.lastName || '')).trim();
@@ -319,9 +327,63 @@
         '<td class="py-3 px-2 text-on-surface-variant">' + A.escapeHtml(e.position ? e.position.positionName : '—') + '</td>' +
         '<td class="py-3 px-2 text-on-surface-variant">' + A.escapeHtml(e.zone ? e.zone.zoneName : '—') + '</td>' +
         '<td class="py-3 px-2 text-right num-cell text-on-surface">' + salary + '</td>' +
-        '<td class="py-3 px-2">' + estado + '</td>';
+        '<td class="py-3 px-2">' + estado + '</td>' +
+        '<td class="py-3 px-2 text-right whitespace-nowrap">' +
+          '<button class="adm-act" data-act="edit" title="Editar">' +
+            '<span class="material-symbols-outlined">edit</span></button>' +
+          '<button class="adm-act" data-act="toggle" title="' +
+            (e.active ? 'Desactivar' : 'Reactivar') + '">' +
+            '<span class="material-symbols-outlined">' +
+            (e.active ? 'person_off' : 'person_check') + '</span></button>' +
+        '</td>';
+
+      tr.querySelector('[data-act="edit"]').addEventListener('click', function () {
+        openEdit(e);
+      });
+      tr.querySelector('[data-act="toggle"]').addEventListener('click', function () {
+        toggleActive(e, name);
+      });
       body.appendChild(tr);
     });
+  }
+
+  // ---- Acciones de fila ---------------------------------------------------
+
+  /**
+   * Activa o desactiva. No hay borrado: un empleado con liquidaciones cargadas
+   * no puede eliminarse sin dejar huérfano su histórico de nómina.
+   */
+  async function toggleActive(employee, name) {
+    var deactivating = employee.active;
+    var question = deactivating
+      ? '¿Desactivar a ' + name + '?\n\nDejará de aparecer en los listados y en el cálculo. Su histórico se conserva.'
+      : '¿Reactivar a ' + name + '?';
+    if (!A.confirmAction(question)) return;
+
+    try {
+      await A.patch('/employees/' + employee.employeeId, { active: !deactivating });
+      A.toast(deactivating ? 'Empleado desactivado' : 'Empleado reactivado');
+      load();
+    } catch (err) {
+      A.toast(err && err.message ? err.message : 'No se pudo actualizar', 'error');
+    }
+  }
+
+  /** Abre el modal en modo edición, con los datos del empleado precargados. */
+  function openEdit(employee) {
+    editingId = employee.employeeId;
+    var p = employee.person || {};
+    el('m-doc').value = p.documentNumber || '';
+    el('m-doc').disabled = true; // identifica a la persona: no se cambia
+    el('m-code').value = employee.employeeCode || '';
+    el('m-code').disabled = true; // clave del empleado, igual que el documento
+    el('m-first').value = p.firstName || '';
+    el('m-last').value = p.lastName || '';
+    el('m-salary').value = Number(employee.baseSalary) || '';
+    el('m-hire').value = employee.hireDate ? String(employee.hireDate).slice(0, 10) : '';
+    el('m-position').value = employee.positionId || '';
+    el('m-zone').value = employee.zoneId || '';
+    open();
   }
 
   el('f-search').addEventListener('input', render);
@@ -330,23 +392,50 @@
   // Modal
   function open() { el('modal').classList.remove('hidden'); el('modal').classList.add('flex'); }
   function close() { el('modal').classList.add('hidden'); el('modal').classList.remove('flex'); el('m-error').classList.add('hidden'); }
-  el('btn-new').addEventListener('click', open);
+  /** Abre el modal en modo alta: limpia el formulario y reactiva las claves. */
+  function openNew() {
+    editingId = null;
+    ['m-doc', 'm-code', 'm-first', 'm-last', 'm-salary', 'm-hire'].forEach(function (id) {
+      el(id).value = '';
+    });
+    el('m-doc').disabled = false;
+    el('m-code').disabled = false;
+    el('m-position').value = '';
+    el('m-zone').value = '';
+    open();
+  }
+
+  el('btn-new').addEventListener('click', openNew);
   el('m-close').addEventListener('click', close);
   el('m-cancel').addEventListener('click', close);
   el('m-save').addEventListener('click', async function () {
     function showErr(m) { el('m-error-msg').textContent = m; el('m-error').classList.remove('hidden'); el('m-error').classList.add('flex'); }
     var doc = el('m-doc').value.trim(), code = el('m-code').value.trim(), first = el('m-first').value.trim(), last = el('m-last').value.trim(), salary = el('m-salary').value;
     if (!doc || !code || !first || !last || salary === '') { showErr('Cédula, código, nombres, apellidos y salario son obligatorios.'); return; }
-    var payload = { documentNumber: doc, employeeCode: code, firstName: first, lastName: last, baseSalary: parseFloat(salary) };
-    if (el('m-hire').value) payload.hireDate = el('m-hire').value;
-    if (el('m-position').value) payload.positionId = el('m-position').value;
-    if (el('m-zone').value) payload.zoneId = el('m-zone').value;
+
     try {
-      await A.post('/employees', payload);
-      A.toast('Empleado creado.');
+      if (editingId) {
+        // En edición no viajan documento ni código: identifican al empleado y
+        // el backend no los admite en el PATCH.
+        var patch = { firstName: first, lastName: last, baseSalary: parseFloat(salary) };
+        if (el('m-hire').value) patch.hireDate = el('m-hire').value;
+        if (el('m-position').value) patch.positionId = el('m-position').value;
+        if (el('m-zone').value) patch.zoneId = el('m-zone').value;
+        await A.patch('/employees/' + editingId, patch);
+        A.toast('Empleado actualizado.');
+      } else {
+        var payload = { documentNumber: doc, employeeCode: code, firstName: first, lastName: last, baseSalary: parseFloat(salary) };
+        if (el('m-hire').value) payload.hireDate = el('m-hire').value;
+        if (el('m-position').value) payload.positionId = el('m-position').value;
+        if (el('m-zone').value) payload.zoneId = el('m-zone').value;
+        await A.post('/employees', payload);
+        A.toast('Empleado creado.');
+      }
       close();
       load();
-    } catch (e) { showErr(e.message || 'No se pudo crear el empleado.'); }
+    } catch (e) {
+      showErr(e.message || 'No se pudo guardar el empleado.');
+    }
   });
 })();
 </script>

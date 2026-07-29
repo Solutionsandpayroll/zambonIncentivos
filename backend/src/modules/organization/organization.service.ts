@@ -14,6 +14,7 @@ import {
   CreateZoneDto,
 } from './dto/structure.dto';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
+import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { CreateHierarchyDto } from './dto/create-hierarchy.dto';
 
 @Injectable()
@@ -92,6 +93,65 @@ export class OrganizationService {
           hireDate: dto.hireDate ? new Date(dto.hireDate) : null,
           zoneId: dto.zoneId ?? null,
           positionId: dto.positionId ?? null,
+        },
+        include: { person: true, zone: true, position: true },
+      });
+    });
+  }
+
+  /**
+   * Actualiza datos de un empleado y, opcionalmente, lo activa o desactiva.
+   *
+   * No hay borrado: un empleado con liquidaciones, cuotas o ventas cargadas no
+   * puede eliminarse sin dejar huérfano su histórico de nómina. Desactivar lo
+   * saca de los listados y del cálculo, conservando lo ya liquidado.
+   */
+  async updateEmployee(employeeId: string, dto: UpdateEmployeeDto) {
+    const employee = await this.prisma.employee.findUnique({
+      where: { employeeId },
+      select: { employeeId: true, personId: true },
+    });
+    if (!employee) throw new NotFoundException('El empleado no existe');
+
+    if (dto.zoneId) {
+      const zone = await this.prisma.zone.findUnique({ where: { zoneId: dto.zoneId } });
+      if (!zone) throw new NotFoundException('La zona no existe');
+    }
+    if (dto.positionId) {
+      const position = await this.prisma.position.findUnique({
+        where: { positionId: dto.positionId },
+      });
+      if (!position) throw new NotFoundException('El cargo no existe');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // Nombre y apellido viven en `person`; el resto en `employee`.
+      if (dto.firstName !== undefined || dto.lastName !== undefined) {
+        const person = await tx.person.findUniqueOrThrow({
+          where: { personId: employee.personId },
+          select: { firstName: true, lastName: true },
+        });
+        const firstName = dto.firstName ?? person.firstName;
+        const lastName = dto.lastName ?? person.lastName;
+        await tx.person.update({
+          where: { personId: employee.personId },
+          data: { firstName, lastName, fullName: `${firstName} ${lastName}`.trim() },
+        });
+      }
+
+      return tx.employee.update({
+        where: { employeeId },
+        data: {
+          ...(dto.baseSalary !== undefined && {
+            baseSalary: new Prisma.Decimal(dto.baseSalary),
+          }),
+          ...(dto.hireDate !== undefined && { hireDate: new Date(dto.hireDate) }),
+          ...(dto.terminationDate !== undefined && {
+            terminationDate: new Date(dto.terminationDate),
+          }),
+          ...(dto.zoneId !== undefined && { zoneId: dto.zoneId }),
+          ...(dto.positionId !== undefined && { positionId: dto.positionId }),
+          ...(dto.active !== undefined && { active: dto.active }),
         },
         include: { person: true, zone: true, position: true },
       });

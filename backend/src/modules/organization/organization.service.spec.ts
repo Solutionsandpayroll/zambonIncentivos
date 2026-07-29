@@ -60,6 +60,80 @@ describe('OrganizationService.createHierarchy', () => {
   });
 });
 
+describe('OrganizationService.updateEmployee', () => {
+  function makeService(overrides: Record<string, any> = {}) {
+    const tx = {
+      person: {
+        findUniqueOrThrow: jest
+          .fn()
+          .mockResolvedValue({ firstName: 'ANA', lastName: 'GUZMAN' }),
+        update: jest.fn().mockResolvedValue({}),
+      },
+      employee: { update: jest.fn().mockResolvedValue({ employeeId: 'e1' }) },
+    };
+    const prisma = {
+      employee: {
+        findUnique: jest.fn().mockResolvedValue({ employeeId: 'e1', personId: 'p1' }),
+      },
+      zone: { findUnique: jest.fn().mockResolvedValue({ zoneId: 'z1' }) },
+      position: { findUnique: jest.fn().mockResolvedValue({ positionId: 'c1' }) },
+      $transaction: jest.fn(async (fn: any) => fn(tx)),
+      ...overrides,
+    };
+    return { service: new OrganizationService(prisma as never, {} as never), prisma, tx };
+  }
+
+  it('rechaza un empleado inexistente', async () => {
+    const { service } = makeService({ employee: { findUnique: jest.fn().mockResolvedValue(null) } });
+    await expect(service.updateEmployee('nope', { baseSalary: 1 })).rejects.toThrow(
+      /empleado no existe/i,
+    );
+  });
+
+  it('actualiza el salario sin tocar los datos de la persona', async () => {
+    const { service, tx } = makeService();
+    await service.updateEmployee('e1', { baseSalary: 2500000 });
+    expect(tx.employee.update).toHaveBeenCalledTimes(1);
+    expect(tx.person.update).not.toHaveBeenCalled();
+  });
+
+  it('recompone el nombre completo al cambiar solo el apellido', async () => {
+    const { service, tx } = makeService();
+    await service.updateEmployee('e1', { lastName: 'GUZMAN ROJAS' });
+    expect(tx.person.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          firstName: 'ANA',
+          lastName: 'GUZMAN ROJAS',
+          fullName: 'ANA GUZMAN ROJAS',
+        }),
+      }),
+    );
+  });
+
+  it('desactiva al empleado sin borrarlo', async () => {
+    const { service, tx } = makeService();
+    await service.updateEmployee('e1', { active: false });
+    expect(tx.employee.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ active: false }) }),
+    );
+  });
+
+  it('no modifica campos que no llegan en el DTO', async () => {
+    const { service, tx } = makeService();
+    await service.updateEmployee('e1', { active: true });
+    const data = tx.employee.update.mock.calls[0][0].data;
+    expect(Object.keys(data)).toEqual(['active']);
+  });
+
+  it('rechaza una zona inexistente', async () => {
+    const { service } = makeService({ zone: { findUnique: jest.fn().mockResolvedValue(null) } });
+    await expect(service.updateEmployee('e1', { zoneId: 'z9' })).rejects.toThrow(
+      /zona no existe/i,
+    );
+  });
+});
+
 describe('OrganizationService.createZone', () => {
   it('rechaza crear zona con región inexistente', async () => {
     const prisma = {

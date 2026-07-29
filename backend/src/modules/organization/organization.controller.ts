@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { OrganizationService } from './organization.service';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -11,6 +11,7 @@ import {
   CreateZoneDto,
 } from './dto/structure.dto';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
+import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { CreateHierarchyDto } from './dto/create-hierarchy.dto';
 
 @Controller()
@@ -32,6 +33,16 @@ export class OrganizationController {
   @Roles(AppRole.ADMIN)
   createEmployee(@Body() dto: CreateEmployeeDto) {
     return this.organization.createEmployee(dto);
+  }
+
+  /**
+   * Edita un empleado y, con `active`, lo activa o desactiva. No existe DELETE:
+   * borrar dejaría huérfanas sus liquidaciones (ver updateEmployee).
+   */
+  @Patch('employees/:id')
+  @Roles(AppRole.ADMIN)
+  updateEmployee(@Param('id') id: string, @Body() dto: UpdateEmployeeDto) {
+    return this.organization.updateEmployee(id, dto);
   }
 
   // ---- Estructura ---------------------------------------------------------
