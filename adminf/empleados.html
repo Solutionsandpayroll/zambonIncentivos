@@ -358,7 +358,7 @@
     var question = deactivating
       ? '¿Desactivar a ' + name + '?\n\nDejará de aparecer en los listados y en el cálculo. Su histórico se conserva.'
       : '¿Reactivar a ' + name + '?';
-    if (!A.confirmAction(question)) return;
+    if (!(await A.confirmAction(question, { confirmLabel: deactivating ? 'Desactivar' : 'Reactivar', danger: deactivating }))) return;
 
     try {
       await A.patch('/employees/' + employee.employeeId, { active: !deactivating });

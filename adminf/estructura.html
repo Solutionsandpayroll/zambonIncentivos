@@ -107,6 +107,17 @@
   .sub-nav__item--active { background: rgba(195,205,23,0.12); color: #c3cd17; font-weight: 600; }
   .sub-nav__group { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #92927a; padding: 0.75rem 0.75rem 0.35rem; font-weight: 600; }
   .adm-tr { transition: background 150ms ease; }
+  .adm-act { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem;
+    margin-left: 0.25rem; border: 0; border-radius: 0.5rem; background: transparent; color: #c8c8ae;
+    cursor: pointer; transition: background-color 160ms var(--ease-out), color 160ms var(--ease-out); }
+  .adm-act .material-symbols-outlined { font-size: 18px; }
+  .adm-act:active { transform: scale(0.97); }
+  @media (hover: hover) and (pointer: fine) { .adm-act:hover { background: rgba(255,255,255,0.08); color: #e2e2e2; } }
+  .struct-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+    padding: 0.35rem 0 0.35rem 0.25rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .struct-row__label { font-size: 14px; color: #e2e2e2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .struct-row__actions { display: flex; flex-shrink: 0; }
+  .struct-row--off .struct-row__label { color: #92927a; text-decoration: line-through; }
   @media (hover: hover) and (pointer: fine) { .adm-tr:hover { background: rgba(255,255,255,0.03); } }
   /* tabs internas de catálogo */
   .cat-tab { padding: 0.4rem 0.9rem; border-radius: 0.5rem; font-size: 13px; font-weight: 500; color: #c8c8ae; cursor: pointer; transition: background 150ms ease, color 150ms ease; }
@@ -201,6 +212,7 @@
 <th class="font-label-bold py-2.5 px-2">Nombre</th>
 <th class="font-label-bold py-2.5 px-2">20% se paga</th>
 <th class="font-label-bold py-2.5 px-2">Estado</th>
+<th class="font-label-bold py-2.5 px-2 text-right">Acciones</th>
 </tr>
 </thead>
 <tbody id="teams-body">
@@ -252,10 +264,10 @@
   async function loadTeams() {
     var body = el('teams-body');
     try {
-      var teams = await A.get('/teams');
+      var teams = await A.get('/teams?includeInactive=true');
       el('teams-count').textContent = teams.length + ' equipos activos';
       body.innerHTML = '';
-      if (!teams.length) { body.innerHTML = '<tr><td colspan="4" class="py-6 text-center text-on-surface-variant text-sm">— Sin equipos.</td></tr>'; return; }
+      if (!teams.length) { body.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-on-surface-variant text-sm">— Sin equipos.</td></tr>'; return; }
       teams.forEach(function (t) {
         var monthly = MONTHLY.indexOf(t.teamCode) !== -1;
         var tr = document.createElement('tr');
@@ -264,65 +276,227 @@
           '<td class="py-3 px-2 mono text-on-surface-variant">' + A.escapeHtml(t.teamCode) + '</td>' +
           '<td class="py-3 px-2 text-on-surface">' + A.escapeHtml(t.teamName) + '</td>' +
           '<td class="py-3 px-2"><span class="z-pill ' + (monthly ? 'z-pill--active' : 'z-pill--muted') + '">' + (monthly ? 'Mensual' : 'Por ciclo') + '</span></td>' +
-          '<td class="py-3 px-2"><span class="z-pill z-pill--active">Activo</span></td>';
+          '<td class="py-3 px-2"><span class="z-pill ' + (t.active ? 'z-pill--active' : 'z-pill--muted') + '">' + (t.active ? 'Activo' : 'Inactivo') + '</span></td>' +
+          '<td class="py-3 px-2 text-right whitespace-nowrap">' +
+            '<button class="adm-act" data-act="edit" title="Editar">' +
+              '<span class="material-symbols-outlined">edit</span></button>' +
+            '<button class="adm-act" data-act="toggle" title="' +
+              (t.active ? 'Desactivar' : 'Reactivar') + '">' +
+              '<span class="material-symbols-outlined">' +
+              (t.active ? 'visibility_off' : 'visibility') + '</span></button>' +
+          '</td>';
+
+        tr.querySelector('[data-act="edit"]').addEventListener('click', function () { editTeam(t); });
+        tr.querySelector('[data-act="toggle"]').addEventListener('click', function () {
+          toggleEntity('/teams', t.teamId, t.teamName, t.active, loadTeams);
+        });
         body.appendChild(tr);
       });
-    } catch (e) { body.innerHTML = '<tr><td colspan="4" class="py-6 text-center text-on-surface-variant text-sm">— No se pudieron cargar los equipos.</td></tr>'; }
+    } catch (e) { body.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-on-surface-variant text-sm">— No se pudieron cargar los equipos.</td></tr>'; }
+  }
+
+  /**
+   * Renderiza una lista simple (cargos, regiones, zonas) con sus acciones.
+   * Los inactivos se muestran atenuados: se piden con includeInactive para
+   * poder reactivarlos, ya que ninguna entidad de estructura se borra.
+   */
+  function renderList(hostId, items, config) {
+    var host = el(hostId);
+    if (!items.length) {
+      host.innerHTML = '<p class="text-label-sm text-on-surface-variant">— Sin ' + config.plural + '.</p>';
+      return;
+    }
+    host.innerHTML = '';
+    items.forEach(function (item) {
+      var row = document.createElement('div');
+      row.className = 'struct-row';
+      if (!item.active) row.classList.add('struct-row--off');
+
+      var label = document.createElement('span');
+      label.className = 'struct-row__label';
+      label.textContent = config.label(item);
+      row.appendChild(label);
+
+      var actions = document.createElement('span');
+      actions.className = 'struct-row__actions';
+
+      var edit = document.createElement('button');
+      edit.className = 'adm-act';
+      edit.title = 'Editar';
+      edit.innerHTML = '<span class="material-symbols-outlined">edit</span>';
+      edit.addEventListener('click', function () { config.onEdit(item); });
+      actions.appendChild(edit);
+
+      var toggle = document.createElement('button');
+      toggle.className = 'adm-act';
+      toggle.title = item.active ? 'Desactivar' : 'Reactivar';
+      toggle.innerHTML = '<span class="material-symbols-outlined">' +
+        (item.active ? 'visibility_off' : 'visibility') + '</span>';
+      toggle.addEventListener('click', function () { config.onToggle(item); });
+      actions.appendChild(toggle);
+
+      row.appendChild(actions);
+      host.appendChild(row);
+    });
+  }
+
+  /** Activa o desactiva cualquier entidad de estructura. */
+  async function toggleEntity(path, id, name, active, reload) {
+    var ok = await A.confirmAction(
+      (active ? '¿Desactivar «' + name + '»?' : '¿Reactivar «' + name + '»?') +
+        (active ? '\nDejará de aparecer en los selectores. Lo ya registrado se conserva.' : ''),
+      { confirmLabel: active ? 'Desactivar' : 'Reactivar', danger: active },
+    );
+    if (!ok) return;
+    try {
+      await A.patch(path + '/' + id, { active: !active });
+      A.toast(active ? 'Desactivado.' : 'Reactivado.');
+      reload();
+    } catch (e) { A.toast(e.message || 'No se pudo actualizar.', 'error'); }
+  }
+
+  var positions = [];
+  /** Edita el nombre del equipo. El código es su clave: no se cambia. */
+  async function editTeam(team) {
+    var values = await A.promptForm('Editar equipo', [
+      { name: 'teamName', label: 'Nombre del equipo', value: team.teamName, required: true },
+    ]);
+    if (!values) return;
+    try {
+      await A.patch('/teams/' + team.teamId, values);
+      A.toast('Equipo actualizado.'); loadTeams();
+    } catch (e) { A.toast(e.message || 'No se pudo actualizar.', 'error'); }
   }
 
   async function loadPositions() {
     try {
-      var items = await A.get('/positions');
-      el('positions-list').innerHTML = items.length
-        ? items.map(function (p) { return '<div class="text-sm text-on-surface py-1.5 border-b border-white/5">' + A.escapeHtml(p.positionName) + '</div>'; }).join('')
-        : '<p class="text-label-sm text-on-surface-variant">— Sin cargos.</p>';
+      positions = await A.get('/positions?includeInactive=true');
+      renderList('positions-list', positions, {
+        plural: 'cargos',
+        label: function (p) { return p.positionName; },
+        onEdit: async function (p) {
+          var values = await A.promptForm('Editar cargo', [
+            { name: 'positionName', label: 'Nombre del cargo', value: p.positionName, required: true },
+            { name: 'description', label: 'Descripción', value: p.description || '' },
+          ]);
+          if (!values) return;
+          try {
+            await A.patch('/positions/' + p.positionId, values);
+            A.toast('Cargo actualizado.'); loadPositions();
+          } catch (e) { A.toast(e.message || 'No se pudo actualizar.', 'error'); }
+        },
+        onToggle: function (p) {
+          toggleEntity('/positions', p.positionId, p.positionName, p.active, loadPositions);
+        },
+      });
     } catch (e) {}
   }
 
   var regions = [];
   async function loadRegions() {
     try {
-      regions = await A.get('/regions');
-      el('regions-list').innerHTML = regions.length
-        ? regions.map(function (r) { return '<div class="text-sm text-on-surface py-1.5 border-b border-white/5">' + A.escapeHtml(r.regionName) + '</div>'; }).join('')
-        : '<p class="text-label-sm text-on-surface-variant">— Sin regiones.</p>';
+      regions = await A.get('/regions?includeInactive=true');
+      renderList('regions-list', regions, {
+        plural: 'regiones',
+        label: function (r) { return r.regionName; },
+        onEdit: async function (r) {
+          var values = await A.promptForm('Editar región', [
+            { name: 'regionName', label: 'Nombre de la región', value: r.regionName, required: true },
+          ]);
+          if (!values) return;
+          try {
+            await A.patch('/regions/' + r.regionId, values);
+            A.toast('Región actualizada.'); loadRegions(); loadZones();
+          } catch (e) { A.toast(e.message || 'No se pudo actualizar.', 'error'); }
+        },
+        onToggle: function (r) {
+          toggleEntity('/regions', r.regionId, r.regionName, r.active, loadRegions);
+        },
+      });
     } catch (e) {}
   }
 
   async function loadZones() {
     try {
-      var items = await A.get('/zones');
-      el('zones-list').innerHTML = items.length
-        ? items.map(function (z) { return '<span class="z-pill z-pill--muted">' + A.escapeHtml(z.zoneName) + '</span>'; }).join('')
-        : '<p class="text-label-sm text-on-surface-variant">— Sin zonas.</p>';
+      var items = await A.get('/zones?includeInactive=true');
+      renderList('zones-list', items, {
+        plural: 'zonas',
+        label: function (z) {
+          return z.zoneName + (z.region ? ' · ' + z.region.regionName : '');
+        },
+        onEdit: async function (z) {
+          var values = await A.promptForm('Editar zona', [
+            { name: 'zoneName', label: 'Nombre de la zona', value: z.zoneName, required: true },
+            {
+              name: 'regionId', label: 'Región', type: 'select', value: z.regionId,
+              options: regions.map(function (r) {
+                return { value: r.regionId, label: r.regionName };
+              }),
+            },
+          ]);
+          if (!values) return;
+          try {
+            await A.patch('/zones/' + z.zoneId, values);
+            A.toast('Zona actualizada.'); loadZones();
+          } catch (e) { A.toast(e.message || 'No se pudo actualizar.', 'error'); }
+        },
+        onToggle: function (z) {
+          toggleEntity('/zones', z.zoneId, z.zoneName, z.active, loadZones);
+        },
+      });
     } catch (e) {}
   }
 
-  // ---- Crear (prompt simple; el backend valida unicidad) ----
+  // ---- Crear (modal del sistema; el backend valida unicidad) ----
   el('btn-team').addEventListener('click', async function () {
-    var name = prompt('Nombre del equipo:'); if (!name) return;
-    var code = prompt('Código único (ej. TM_CADENA):'); if (!code) return;
-    try { await A.post('/teams', { teamName: name.trim(), teamCode: code.trim().toUpperCase() }); A.toast('Equipo creado.'); loadTeams(); }
-    catch (e) { A.toast(e.message || 'No se pudo crear.', 'error'); }
+    var values = await A.promptForm('Nuevo equipo', [
+      { name: 'teamName', label: 'Nombre del equipo', required: true },
+      {
+        name: 'teamCode', label: 'Código único', required: true,
+        hint: 'En mayúsculas y sin espacios, p. ej. TM_CADENA.',
+      },
+    ], { submitLabel: 'Crear equipo' });
+    if (!values) return;
+    try {
+      await A.post('/teams', {
+        teamName: values.teamName,
+        teamCode: values.teamCode.toUpperCase().replace(/\s+/g, '_'),
+      });
+      A.toast('Equipo creado.'); loadTeams();
+    } catch (e) { A.toast(e.message || 'No se pudo crear.', 'error'); }
   });
+
   el('btn-position').addEventListener('click', async function () {
-    var name = prompt('Nombre del cargo:'); if (!name) return;
-    try { await A.post('/positions', { positionName: name.trim() }); A.toast('Cargo creado.'); loadPositions(); }
+    var values = await A.promptForm('Nuevo cargo', [
+      { name: 'positionName', label: 'Nombre del cargo', required: true },
+      { name: 'description', label: 'Descripción' },
+    ], { submitLabel: 'Crear cargo' });
+    if (!values) return;
+    try { await A.post('/positions', values); A.toast('Cargo creado.'); loadPositions(); }
     catch (e) { A.toast(e.message || 'No se pudo crear.', 'error'); }
   });
+
   el('btn-region').addEventListener('click', async function () {
-    var name = prompt('Nombre de la región:'); if (!name) return;
-    try { await A.post('/regions', { regionName: name.trim() }); A.toast('Región creada.'); loadRegions(); }
+    var values = await A.promptForm('Nueva región', [
+      { name: 'regionName', label: 'Nombre de la región', required: true },
+    ], { submitLabel: 'Crear región' });
+    if (!values) return;
+    try { await A.post('/regions', values); A.toast('Región creada.'); loadRegions(); }
     catch (e) { A.toast(e.message || 'No se pudo crear.', 'error'); }
   });
+
   el('btn-zone').addEventListener('click', async function () {
-    if (!regions.length) { A.toast('Crea primero una región.', 'error'); return; }
-    var name = prompt('Nombre de la zona (ciudad):'); if (!name) return;
-    var opts = regions.map(function (r, i) { return (i + 1) + '. ' + r.regionName; }).join('\n');
-    var idx = parseInt(prompt('Región para esta zona:\n' + opts, '1'), 10);
-    var region = regions[idx - 1];
-    if (!region) { A.toast('Región inválida.', 'error'); return; }
-    try { await A.post('/zones', { zoneName: name.trim(), regionId: region.regionId }); A.toast('Zona creada.'); loadZones(); }
+    var active = regions.filter(function (r) { return r.active; });
+    if (!active.length) { A.toast('Crea primero una región.', 'error'); return; }
+    var values = await A.promptForm('Nueva zona', [
+      { name: 'zoneName', label: 'Nombre de la zona (ciudad)', required: true },
+      {
+        name: 'regionId', label: 'Región', type: 'select',
+        options: active.map(function (r) { return { value: r.regionId, label: r.regionName }; }),
+      },
+    ], { submitLabel: 'Crear zona' });
+    if (!values) return;
+    try { await A.post('/zones', values); A.toast('Zona creada.'); loadZones(); }
     catch (e) { A.toast(e.message || 'No se pudo crear.', 'error'); }
   });
 

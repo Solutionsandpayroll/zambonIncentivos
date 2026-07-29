@@ -288,7 +288,8 @@
 
   // ---- Cerrar periodo (irreversible) ----
   async function closePeriod(id, name) {
-    if (!A.confirmAction('¿Cerrar el periodo ' + name + '? Esto sella los resultados y bloquea cargas y recálculos. Es irreversible.')) return;
+    if (!(await A.confirmAction('¿Cerrar el periodo ' + name + '?
+Sella los resultados y bloquea cargas y recálculos. Es irreversible.', { confirmLabel: 'Cerrar periodo', danger: true }))) return;
     try {
       await A.patch('/periods/' + id + '/close', {});
       A.toast('Periodo ' + name + ' cerrado.');

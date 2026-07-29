@@ -365,28 +365,36 @@
   // ---- Acciones de fila ---------------------------------------------------
 
   var ROLE_OPTIONS = ['ADMIN', 'NOMINA', 'GERENTE', 'COORDINADOR', 'EMPLEADO'];
+  var ROLE_HINT = {
+    ADMIN: 'administra todo el sistema',
+    NOMINA: 'consulta y exporta todos los resultados',
+    GERENTE: 've su árbol jerárquico',
+    COORDINADOR: 've su equipo',
+    EMPLEADO: 've solo su liquidación',
+  };
 
-  /** Reemplaza el conjunto de roles del usuario. */
+  /**
+   * Reemplaza el rol del usuario. Se ofrece un único rol por cuenta: el alcance
+   * ya es acumulativo (ADMIN ve todo, GERENTE su árbol), así que combinarlos no
+   * concede nada que el mayor no dé por sí solo.
+   */
   async function editRoles(user) {
-    var current = (user.roles || []).join(', ');
-    var answer = prompt(
-      'Roles de "' + user.username + '" separados por coma.\n' +
-        'Disponibles: ' + ROLE_OPTIONS.join(', '),
-      current,
-    );
-    if (answer === null) return;
-
-    var roleNames = answer.split(',').map(function (r) { return r.trim().toUpperCase(); }).filter(Boolean);
-    if (!roleNames.length) { A.toast('Debe conservar al menos un rol.', 'error'); return; }
-
-    var invalid = roleNames.filter(function (r) { return ROLE_OPTIONS.indexOf(r) === -1; });
-    if (invalid.length) { A.toast('Rol no válido: ' + invalid.join(', '), 'error'); return; }
+    var values = await A.promptForm('Rol de ' + user.username, [
+      {
+        name: 'roleName', label: 'Rol', type: 'select',
+        value: (user.roles || [])[0] || 'EMPLEADO',
+        options: ROLE_OPTIONS.map(function (r) {
+          return { value: r, label: r + ' — ' + ROLE_HINT[r] };
+        }),
+      },
+    ], { submitLabel: 'Guardar rol' });
+    if (!values) return;
 
     try {
-      await A.patch('/users/' + user.userId, { roleNames: roleNames });
-      A.toast('Roles actualizados.');
+      await A.patch('/users/' + user.userId, { roleNames: [values.roleName] });
+      A.toast('Rol actualizado.');
       load();
-    } catch (e) { A.toast(e.message || 'No se pudieron actualizar los roles.', 'error'); }
+    } catch (e) { A.toast(e.message || 'No se pudo actualizar el rol.', 'error'); }
   }
 
   /**
@@ -399,7 +407,7 @@
     var question = deactivating
       ? '¿Desactivar el usuario "' + user.username + '"?\n\nNo podrá iniciar sesión. Su historial se conserva.'
       : '¿Activar el usuario "' + user.username + '"?';
-    if (!A.confirmAction(question)) return;
+    if (!(await A.confirmAction(question, { confirmLabel: deactivating ? 'Desactivar' : 'Activar', danger: deactivating }))) return;
 
     try {
       await A.patch('/users/' + user.userId, { userStatus: deactivating ? 'INACTIVE' : 'ACTIVE' });
@@ -409,12 +417,26 @@
   }
 
   async function resetPassword(id, name) {
-    var pass = prompt('Nueva contraseña para "' + name + '" (mín. 8 caracteres):');
-    if (!pass) return;
-    if (pass.length < 8) { A.toast('La contraseña debe tener al menos 8 caracteres.', 'error'); return; }
+    var values = await A.promptForm('Restablecer contraseña de ' + name, [
+      {
+        name: 'newPassword', label: 'Nueva contraseña', type: 'password', required: true,
+        hint: 'Mínimo 8 caracteres. Se le exigirá cambiarla al entrar.',
+      },
+      { name: 'repeat', label: 'Repite la contraseña', type: 'password', required: true },
+    ], {
+      submitLabel: 'Restablecer',
+      validate: function (v) {
+        if (v.newPassword.length < 8) return 'La contraseña debe tener al menos 8 caracteres.';
+        if (v.newPassword !== v.repeat) return 'Las dos contraseñas no coinciden.';
+        return null;
+      },
+    });
+    if (!values) return;
+
     try {
-      await A.post('/users/' + id + '/reset-password', { newPassword: pass });
+      await A.post('/users/' + id + '/reset-password', { newPassword: values.newPassword });
       A.toast('Contraseña restablecida para ' + name + '.');
+      load();
     } catch (e) { A.toast(e.message || 'No se pudo restablecer.', 'error'); }
   }
 

@@ -458,7 +458,9 @@
     }
 
     button.addEventListener('click', function () {
-      if (window.confirm('¿Cerrar sesión?')) logout();
+      confirmAction('¿Cerrar sesión?', { confirmLabel: 'Cerrar sesión' }).then(function (ok) {
+        if (ok) logout();
+      });
     });
 
     profile.appendChild(button);
@@ -517,9 +519,262 @@
     }, 3200);
   }
 
-  /** Confirmación simple (para acciones irreversibles como cerrar periodo). */
-  function confirmAction(message) {
-    return window.confirm(message);
+  // ---- Diálogos ------------------------------------------------------------
+  //
+  // Reemplazan a confirm() y prompt() nativos, que ignoran el tema del sistema
+  // y aparecen anclados al navegador. Ambos devuelven una promesa.
+
+  var Z_SURFACE = '#1e2020';
+  var Z_TEXT = '#e2e2e2';
+  var Z_MUTED = '#c8c8ae';
+  var Z_ACCENT = '#c3cd17';
+  var Z_DANGER = '#ffb4ab';
+
+  /** Contenedor del diálogo: velo, centrado y bloqueo del scroll de fondo. */
+  function buildDialog(labelledBy) {
+    var overlay = document.createElement('div');
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-labelledby', labelledBy);
+    overlay.style.cssText =
+      'position:fixed;inset:0;z-index:1300;display:flex;align-items:center;' +
+      'justify-content:center;padding:1rem;background:rgba(0,0,0,.6);' +
+      'backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)';
+
+    var panel = document.createElement('div');
+    panel.style.cssText =
+      'background:' + Z_SURFACE + ';border:1px solid rgba(255,255,255,.06);' +
+      'border-radius:1rem;padding:1.5rem;width:100%;max-width:26rem;' +
+      'box-shadow:0 20px 45px rgba(0,0,0,.45);font-family:Poppins,sans-serif;' +
+      'opacity:0;transform:scale(.97);' +
+      'transition:opacity 180ms var(--z-ease,cubic-bezier(.23,1,.32,1)),' +
+      'transform 180ms var(--z-ease,cubic-bezier(.23,1,.32,1))';
+    overlay.appendChild(panel);
+
+    var previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.body.appendChild(overlay);
+    requestAnimationFrame(function () {
+      panel.style.opacity = '1';
+      panel.style.transform = 'scale(1)';
+    });
+
+    return {
+      overlay: overlay,
+      panel: panel,
+      close: function () {
+        document.body.style.overflow = previousOverflow;
+        overlay.remove();
+      },
+    };
+  }
+
+  /** Botón con la identidad del sistema. variant: primary | ghost | danger. */
+  function dialogButton(label, variant) {
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = label;
+    var background =
+      variant === 'primary' ? Z_ACCENT : variant === 'danger' ? '#93000a' : 'rgba(255,255,255,.05)';
+    var color =
+      variant === 'primary' ? '#303300' : variant === 'danger' ? '#ffdad6' : Z_TEXT;
+    button.style.cssText =
+      'flex:1;padding:.6rem 1rem;border:0;border-radius:.75rem;cursor:pointer;' +
+      'font:600 14px Poppins,sans-serif;letter-spacing:.02em;' +
+      'background:' + background + ';color:' + color + ';' +
+      'transition:background-color 160ms cubic-bezier(.23,1,.32,1),transform 160ms cubic-bezier(.23,1,.32,1)';
+    button.addEventListener('mousedown', function () { button.style.transform = 'scale(0.97)'; });
+    button.addEventListener('mouseup', function () { button.style.transform = 'scale(1)'; });
+    button.addEventListener('mouseleave', function () { button.style.transform = 'scale(1)'; });
+    return button;
+  }
+
+  /**
+   * Confirmación. `options.danger` tiñe el botón de acción para las operaciones
+   * irreversibles (cerrar un periodo, desactivar a alguien).
+   *
+   * Devuelve una promesa: los llamadores deben usar `await`.
+   */
+  function confirmAction(message, options) {
+    options = options || {};
+    return new Promise(function (resolve) {
+      var dialog = buildDialog('z-confirm-title');
+      var lines = String(message).split('\n');
+
+      var title = document.createElement('h2');
+      title.id = 'z-confirm-title';
+      title.textContent = options.title || lines[0];
+      title.style.cssText =
+        'margin:0 0 .5rem;font-size:1.05rem;font-weight:650;color:' + Z_TEXT;
+      dialog.panel.appendChild(title);
+
+      var rest = (options.title ? lines : lines.slice(1)).join('\n').trim();
+      if (rest) {
+        var body = document.createElement('p');
+        body.textContent = rest;
+        body.style.cssText =
+          'margin:0 0 1.25rem;font-size:.875rem;line-height:1.5;color:' + Z_MUTED +
+          ';white-space:pre-line';
+        dialog.panel.appendChild(body);
+      }
+
+      var actions = document.createElement('div');
+      actions.style.cssText = 'display:flex;gap:.5rem;margin-top:1.25rem';
+      var cancel = dialogButton(options.cancelLabel || 'Cancelar', 'ghost');
+      var accept = dialogButton(options.confirmLabel || 'Confirmar', options.danger ? 'danger' : 'primary');
+      actions.appendChild(cancel);
+      actions.appendChild(accept);
+      dialog.panel.appendChild(actions);
+
+      function finish(result) {
+        document.removeEventListener('keydown', onKey);
+        dialog.close();
+        resolve(result);
+      }
+      function onKey(e) {
+        if (e.key === 'Escape') finish(false);
+        if (e.key === 'Enter') finish(true);
+      }
+
+      cancel.addEventListener('click', function () { finish(false); });
+      accept.addEventListener('click', function () { finish(true); });
+      dialog.overlay.addEventListener('click', function (e) {
+        if (e.target === dialog.overlay) finish(false); // clic fuera = cancelar
+      });
+      document.addEventListener('keydown', onKey);
+      setTimeout(function () { accept.focus(); }, 50);
+    });
+  }
+
+  /**
+   * Formulario modal. `fields` es una lista de
+   * `{ name, label, type, value, options, required, hint }`;
+   * `type` admite 'text', 'number', 'date' y 'select' (con `options`
+   * `[{ value, label }]`).
+   *
+   * Resuelve con un objeto `{ name: valor }`, o `null` si se cancela.
+   */
+  function promptForm(titleText, fields, options) {
+    options = options || {};
+    return new Promise(function (resolve) {
+      var dialog = buildDialog('z-form-title');
+
+      var title = document.createElement('h2');
+      title.id = 'z-form-title';
+      title.textContent = titleText;
+      title.style.cssText =
+        'margin:0 0 1.25rem;font-size:1.05rem;font-weight:650;color:' + Z_TEXT;
+      dialog.panel.appendChild(title);
+
+      var form = document.createElement('form');
+      form.noValidate = true;
+      form.style.cssText = 'display:flex;flex-direction:column;gap:.9rem';
+
+      var controls = {};
+      fields.forEach(function (field) {
+        var wrapper = document.createElement('label');
+        wrapper.style.cssText = 'display:flex;flex-direction:column;gap:.3rem';
+
+        var caption = document.createElement('span');
+        caption.textContent = field.label + (field.required ? ' *' : '');
+        caption.style.cssText =
+          'font-size:.75rem;font-weight:600;letter-spacing:.01em;color:' + Z_MUTED;
+        wrapper.appendChild(caption);
+
+        var control;
+        if (field.type === 'select') {
+          control = document.createElement('select');
+          (field.options || []).forEach(function (option) {
+            var node = document.createElement('option');
+            node.value = option.value;
+            node.textContent = option.label;
+            if (String(option.value) === String(field.value)) node.selected = true;
+            control.appendChild(node);
+          });
+        } else {
+          control = document.createElement('input');
+          control.type = field.type || 'text';
+          control.value = field.value == null ? '' : field.value;
+        }
+        control.style.cssText =
+          'width:100%;background:rgba(26,28,28,.5);color:' + Z_TEXT + ';border:0;' +
+          'border-bottom:2px solid #474834;border-radius:.5rem .5rem 0 0;' +
+          'padding:.5rem .75rem;font:400 15px Poppins,sans-serif;outline:none;' +
+          'transition:border-color 200ms ease';
+        control.addEventListener('focus', function () { control.style.borderBottomColor = Z_ACCENT; });
+        control.addEventListener('blur', function () { control.style.borderBottomColor = '#474834'; });
+        wrapper.appendChild(control);
+
+        if (field.hint) {
+          var hint = document.createElement('span');
+          hint.textContent = field.hint;
+          hint.style.cssText = 'font-size:.7rem;color:' + Z_MUTED + ';opacity:.75';
+          wrapper.appendChild(hint);
+        }
+
+        controls[field.name] = control;
+        form.appendChild(wrapper);
+      });
+
+      var error = document.createElement('p');
+      error.setAttribute('role', 'alert');
+      error.style.cssText =
+        'display:none;margin:.25rem 0 0;font-size:.78rem;color:' + Z_DANGER;
+      form.appendChild(error);
+
+      var actions = document.createElement('div');
+      actions.style.cssText = 'display:flex;gap:.5rem;margin-top:.5rem';
+      var cancel = dialogButton('Cancelar', 'ghost');
+      var accept = dialogButton(options.submitLabel || 'Guardar', 'primary');
+      actions.appendChild(cancel);
+      actions.appendChild(accept);
+      form.appendChild(actions);
+      dialog.panel.appendChild(form);
+
+      function finish(result) {
+        document.removeEventListener('keydown', onKey);
+        dialog.close();
+        resolve(result);
+      }
+      function onKey(e) { if (e.key === 'Escape') finish(null); }
+
+      cancel.addEventListener('click', function () { finish(null); });
+      accept.addEventListener('click', function () { form.requestSubmit ? form.requestSubmit() : submit(); });
+      dialog.overlay.addEventListener('click', function (e) {
+        if (e.target === dialog.overlay) finish(null);
+      });
+      document.addEventListener('keydown', onKey);
+      form.addEventListener('submit', function (e) { e.preventDefault(); submit(); });
+
+      function submit() {
+        var values = {};
+        for (var i = 0; i < fields.length; i++) {
+          var field = fields[i];
+          var value = String(controls[field.name].value || '').trim();
+          if (field.required && !value) {
+            error.textContent = 'Completa el campo «' + field.label + '».';
+            error.style.display = 'block';
+            controls[field.name].focus();
+            return;
+          }
+          values[field.name] = value;
+        }
+        if (options.validate) {
+          var message = options.validate(values);
+          if (message) {
+            error.textContent = message;
+            error.style.display = 'block';
+            return;
+          }
+        }
+        finish(values);
+      }
+
+      setTimeout(function () {
+        var first = fields[0] && controls[fields[0].name];
+        if (first) first.focus();
+      }, 50);
+    });
   }
 
   // ---- API pública --------------------------------------------------------
@@ -552,5 +807,6 @@
     fillSidebar,
     toast,
     confirmAction,
+    promptForm,
   };
 })(window);
