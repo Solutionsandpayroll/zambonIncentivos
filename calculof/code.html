@@ -206,6 +206,10 @@
 <div class="step step--clickable" data-goto="4"><span class="step__dot">4</span><span class="step__label">KPI 20%</span></div>
 <div class="step__bar" data-bar="4"></div>
 <div class="step" data-goto="5"><span class="step__dot">5</span><span class="step__label">Calcular</span></div>
+<!-- El paso 6 solo existe cuando el mes calculado cierra un ciclo: en los otros
+     tres meses no hay bolsa que liquidar y mostrarlo sobraría. -->
+<div class="step__bar hidden" data-bar="5" id="step-bar-5"></div>
+<div class="step hidden" data-goto="6" id="step-6"><span class="step__dot">6</span><span class="step__label">Liquidar 20%</span></div>
 </div>
 
 <!-- ============================================================= -->
@@ -314,13 +318,30 @@
 <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-5">
 <div class="min-w-0">
 <h3 class="font-headline-md text-headline-md text-on-surface">Cumplimiento del 20%</h3>
-<p class="text-label-sm text-on-surface-variant mt-1">Marca quién cumplió el KPI de ejecución. El 20% es todo o nada: no paga sobrecumplimiento. Quien quede sin marcar no lo cobra.</p>
+<p class="text-label-sm text-on-surface-variant mt-1">Marca quién cumplió el KPI de ejecución. El KPI no paga sobrecumplimiento: se cumple o no. Quien quede sin marcar no lo cobra.</p>
 </div>
 <div class="flex items-center gap-2 shrink-0">
 <span id="kpi-count" class="z-pill z-pill--muted">—</span>
 <button id="kpi-all" type="button" class="z-btn z-btn--ghost !py-1.5 !px-3 !text-xs">Todos</button>
 <button id="kpi-none" type="button" class="z-btn z-btn--ghost !py-1.5 !px-3 !text-xs">Ninguno</button>
 </div>
+</div>
+
+<!-- Cuántos KPIs mide el 20% ESTE mes. Se pregunta una vez para el mes entero
+     porque es una regla del periodo, no de cada persona. Con dos, el mes se
+     gana por mitades: un KPI cumplido = 50% de la bolsa del mes. -->
+<div class="glass-card rounded-lg p-4 mb-5 flex flex-col sm:flex-row sm:items-center gap-3">
+<div class="min-w-0 flex-1">
+<p class="text-on-surface text-sm font-medium">¿Con cuántos KPIs se mide el 20% este mes?</p>
+<p id="kpi-count-hint" class="text-label-sm text-on-surface-variant mt-0.5">Con dos KPIs, cumplir uno solo paga la mitad de la bolsa del mes.</p>
+</div>
+<label class="flex items-center gap-2 shrink-0">
+<span class="font-label-sm text-label-sm text-on-surface-variant">KPIs del mes</span>
+<select id="kpi-count-select" class="z-input !w-auto min-w-[110px] text-sm">
+<option value="1">1 KPI</option>
+<option value="2">2 KPIs</option>
+</select>
+</label>
 </div>
 
 <div class="overflow-x-auto -mx-2">
@@ -330,7 +351,8 @@
 <th class="font-label-bold py-2.5 px-2">Cédula</th>
 <th class="font-label-bold py-2.5 px-2">Empleado</th>
 <th class="font-label-bold py-2.5 px-2">Equipo</th>
-<th class="font-label-bold py-2.5 px-2 text-center">Cumple</th>
+<th id="kpi-th-1" class="font-label-bold py-2.5 px-2 text-center">Cumple</th>
+<th id="kpi-th-2" class="font-label-bold py-2.5 px-2 text-center hidden">KPI 2</th>
 <th class="font-label-bold py-2.5 px-2">Notas</th>
 </tr>
 </thead>
@@ -383,6 +405,55 @@
 <p id="calc-done-msg" class="text-label-sm text-on-surface-variant mt-1 mb-6">—</p>
 <div class="flex justify-center gap-3">
 <a href="../resultsf/code.html" class="z-btn z-btn--primary"><span class="material-symbols-outlined text-[18px]">analytics</span>Ver resultados</a>
+<button id="calc-to-payout" class="z-btn z-btn--secondary hidden">Liquidar el 20% del ciclo<span class="material-symbols-outlined text-[18px]">arrow_forward</span></button>
+</div>
+</div>
+</section>
+
+<!-- ============================================================= -->
+<!-- PASO 6 — LIQUIDAR EL 20% DEL CICLO                            -->
+<!-- Solo aparece cuando el mes recién calculado es el ÚLTIMO de su -->
+<!-- ciclo: es ahí donde se cobra el 20% devengado de los 4 meses.  -->
+<!-- ============================================================= -->
+<section class="step-panel" data-panel="6">
+<!-- estado A: previsualización antes de escribir -->
+<div class="glass-card rounded-xl p-6 sm:p-8" id="payout-ready">
+<div class="flex items-start gap-3 mb-5">
+<span class="material-symbols-outlined text-primary-container text-[28px]">payments</span>
+<div class="min-w-0">
+<h3 id="payout-title" class="font-headline-md text-headline-md text-on-surface">Liquidar el 20% del ciclo</h3>
+<p class="text-label-sm text-on-surface-variant mt-1">Este mes cierra el ciclo. Se paga una bolsa mensual del 20% por cada mes cumplido; los meses medidos con dos KPIs y uno solo cumplido pagan media bolsa.</p>
+</div>
+</div>
+
+<!-- La cifra exacta se ve ANTES de escribir: mueve el 20% de cuatro meses de
+     toda la fuerza de ventas, y no debe ser una sorpresa. -->
+<div id="payout-preview" class="glass-card rounded-lg p-5 mb-5">
+<p class="text-label-sm text-on-surface-variant">Calculando la previsualización…</p>
+</div>
+
+<button id="payout-btn" class="z-btn z-btn--primary w-full py-[13px]" disabled><span class="material-symbols-outlined text-[20px]">payments</span>Liquidar el 20%</button>
+<p id="payout-error" class="hidden items-center gap-2 text-error text-label-sm bg-error-container/20 border border-error/20 rounded-lg px-3 py-2 mt-4"><span class="material-symbols-outlined text-[16px]">error</span><span id="payout-error-msg"></span></p>
+</div>
+
+<!-- estado B: progreso -->
+<div class="glass-card rounded-xl p-6 sm:p-8 hidden" id="payout-progress">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-[28px] text-primary-container spin">progress_activity</span>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Liquidando el ciclo…</h3>
+<p class="text-label-sm text-on-surface-variant mt-1">Consolidando los meses cumplidos y pagando las bolsas del 20%.</p>
+</div>
+</div>
+</div>
+
+<!-- estado C: completado -->
+<div class="glass-card rounded-xl p-6 sm:p-8 hidden text-center" id="payout-done">
+<div class="w-14 h-14 rounded-full bg-primary-container/15 flex items-center justify-center mx-auto mb-4"><span class="material-symbols-outlined text-[30px] text-primary-container">task_alt</span></div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Ciclo liquidado</h3>
+<p id="payout-done-msg" class="text-label-sm text-on-surface-variant mt-1 mb-6">—</p>
+<div class="flex justify-center gap-3">
+<a href="../resultsf/code.html" class="z-btn z-btn--primary"><span class="material-symbols-outlined text-[18px]">analytics</span>Ver resultados</a>
 </div>
 </div>
 </section>
@@ -417,8 +488,13 @@
     // (este bloque corre antes que api.js y no puede llamarlo directamente).
     if (typeof window.onStepEnter === 'function') window.onStepEnter(n);
   }
-  document.querySelectorAll('#stepper .step--clickable').forEach(function(s){
-    s.addEventListener('click', function(){ if (+s.dataset.goto <= currentStep) goStep(+s.dataset.goto); });
+  // Delegado en el contenedor, no en cada paso: el paso 6 (liquidar el ciclo)
+  // se vuelve navegable DESPUÉS de calcular, y un listener por elemento puesto
+  // al cargar la página no lo alcanzaría.
+  document.getElementById('stepper').addEventListener('click', function (e) {
+    var s = e.target.closest('.step--clickable');
+    if (!s || !s.dataset.goto) return;
+    if (+s.dataset.goto <= currentStep) goStep(+s.dataset.goto);
   });
   goStep(1);
 </script>
@@ -434,7 +510,9 @@
   // Perfil del sidebar: lo rellena la capa compartida desde la sesión.
   A.fillSidebar();
 
-  var state = { periodId: '', periodLabel: '', file: null, imported: 0, batchId: '', kpiRows: [] };
+  // `closesCycle` lo dice el backend al calcular: si este mes es el último de
+  // su ciclo, trae el ciclo que queda listo para liquidar el 20%.
+  var state = { periodId: '', periodLabel: '', file: null, imported: 0, batchId: '', kpiRows: [], kpiCount: 1, closesCycle: null };
 
   // ---- Periodos abiertos ----
   (async function loadPeriods() {
@@ -604,27 +682,39 @@
 
   // ---- Paso 4: cumplimiento del 20% (GET/PUT /incentives/execution-kpi) ----
 
-  // El asistente avisa al entrar en un paso; solo interesa el del KPI.
+  // El asistente avisa al entrar en un paso: el del KPI carga su tabla y el de
+  // la liquidación pide la previsualización.
   window.onStepEnter = function (n) {
     if (n === 4) loadKpi();
+    if (n === 6) loadPayoutPreview();
   };
 
   async function loadKpi() {
     var body = el('kpi-body');
-    body.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-on-surface-variant text-sm">Cargando…</td></tr>';
+    body.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-on-surface-variant text-sm">Cargando…</td></tr>';
     el('kpi-empty').classList.add('hidden');
     try {
       var q = '/incentives/execution-kpi?periodId=' + encodeURIComponent(state.periodId) +
         (state.batchId ? '&batchId=' + encodeURIComponent(state.batchId) : '');
       state.kpiRows = await A.get(q) || [];
+      // Cuántos KPIs mide el mes: se toma de lo ya marcado (si alguna fila dice
+      // 2, el mes es de 2) para que volver al paso no pierda la elección.
+      state.kpiCount = state.kpiRows.some(function (r) { return r.kpiCount === 2; }) ? 2 : 1;
+      el('kpi-count-select').value = String(state.kpiCount);
       renderKpi();
     } catch (e) {
-      body.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-on-surface-variant text-sm">— No se pudo cargar el cumplimiento.</td></tr>';
+      body.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-on-surface-variant text-sm">— No se pudo cargar el cumplimiento.</td></tr>';
     }
   }
 
   function renderKpi() {
     var body = el('kpi-body');
+    var two = state.kpiCount === 2;
+    el('kpi-th-1').textContent = two ? 'KPI 1' : 'Cumple';
+    el('kpi-th-2').classList.toggle('hidden', !two);
+    setText('kpi-count-hint', two
+      ? 'Cumplir un KPI de los dos paga la mitad de la bolsa del mes; los dos, la bolsa entera.'
+      : 'Con dos KPIs, cumplir uno solo paga la mitad de la bolsa del mes.');
     body.innerHTML = '';
     if (!state.kpiRows.length) {
       el('kpi-empty').classList.remove('hidden');
@@ -649,6 +739,8 @@
         '<td class="py-2 px-2 text-on-surface">' + A.escapeHtml(A.orDash(r.fullName)) + badge + '</td>' +
         '<td class="py-2 px-2 text-on-surface-variant">' + A.escapeHtml(r.teamName || '—') + '</td>' +
         '<td class="py-2 px-2 text-center"><input type="checkbox" class="kpi-check cursor-pointer" data-i="' + i + '"' + (r.meetsKpi ? ' checked' : '') + '/></td>' +
+        // Segunda casilla: solo se muestra cuando el mes se mide con dos KPIs.
+        '<td class="kpi-col-2 py-2 px-2 text-center' + (two ? '' : ' hidden') + '"><input type="checkbox" class="kpi-check-2 cursor-pointer" data-i="' + i + '"' + (r.meetsKpi2 ? ' checked' : '') + '/></td>' +
         '<td class="py-2 px-2">' +
           (g && g.apply20
             ? '<span class="text-label-sm text-primary-container">Cobra el 20% por garantía</span>'
@@ -663,6 +755,12 @@
         updateKpiCount();
       });
     });
+    body.querySelectorAll('.kpi-check-2').forEach(function (c) {
+      c.addEventListener('change', function () {
+        state.kpiRows[+c.dataset.i].meetsKpi2 = c.checked;
+        updateKpiCount();
+      });
+    });
     body.querySelectorAll('[data-note]').forEach(function (n) {
       n.addEventListener('input', function () {
         state.kpiRows[+n.dataset.note].notes = n.value;
@@ -671,10 +769,22 @@
     updateKpiCount();
   }
 
+  // Cuánto gana una fila: 1, 0.5 (mes de dos KPIs con uno cumplido) ó 0.
+  // Réplica de `monthAchievementFraction` del backend, que es quien manda.
+  function kpiFraction(r) {
+    if (state.kpiCount === 2) {
+      return ((r.meetsKpi ? 1 : 0) + (r.meetsKpi2 ? 1 : 0)) / 2;
+    }
+    return r.meetsKpi ? 1 : 0;
+  }
+
   function updateKpiCount() {
     var total = state.kpiRows.length;
-    var ok = state.kpiRows.filter(function (r) { return r.meetsKpi; }).length;
-    el('kpi-count').textContent = total ? (ok + ' de ' + total + ' cumplen') : '—';
+    var ok = state.kpiRows.reduce(function (s, r) { return s + kpiFraction(r); }, 0);
+    // Con dos KPIs el resultado puede ser 3.5: se muestra con el medio, porque
+    // redondearlo diría que cobra más (o menos) de lo que va a cobrar.
+    var shown = Number.isInteger(ok) ? String(ok) : ok.toFixed(1);
+    el('kpi-count').textContent = total ? (shown + ' de ' + total + ' cumplen') : '—';
 
     // Aviso de los garantizados: cobran el 20% con independencia de la marca.
     var g20 = state.kpiRows.filter(function (r) { return r.guaranteed && r.guaranteed.apply20; }).length;
@@ -692,20 +802,35 @@
     }
   }
 
+  // "Todos"/"Ninguno" alcanza a las dos casillas: con dos KPIs, marcar solo la
+  // primera dejaría a todo el mundo en medio cumplimiento sin quererlo.
   function setAllKpi(value) {
-    state.kpiRows.forEach(function (r) { r.meetsKpi = value; });
-    el('kpi-body').querySelectorAll('.kpi-check').forEach(function (c) { c.checked = value; });
+    state.kpiRows.forEach(function (r) { r.meetsKpi = value; r.meetsKpi2 = value; });
+    el('kpi-body').querySelectorAll('.kpi-check, .kpi-check-2').forEach(function (c) { c.checked = value; });
     updateKpiCount();
   }
   el('kpi-all').addEventListener('click', function () { setAllKpi(true); });
   el('kpi-none').addEventListener('click', function () { setAllKpi(false); });
+
+  // Cambiar el número de KPIs del mes redibuja la tabla: aparece o desaparece
+  // la segunda casilla y cambian los totales.
+  el('kpi-count-select').addEventListener('change', function (e) {
+    state.kpiCount = e.target.value === '2' ? 2 : 1;
+    renderKpi();
+  });
 
   async function saveKpi() {
     if (!state.kpiRows.length) return true;
     await A.put('/incentives/execution-kpi', {
       periodId: state.periodId,
       items: state.kpiRows.map(function (r) {
-        return { employeeId: r.employeeId, meetsKpi: !!r.meetsKpi, notes: r.notes || undefined };
+        return {
+          employeeId: r.employeeId,
+          meetsKpi: !!r.meetsKpi,
+          kpiCount: state.kpiCount,
+          meetsKpi2: state.kpiCount === 2 ? !!r.meetsKpi2 : false,
+          notes: r.notes || undefined,
+        };
       }),
     });
     return true;
@@ -738,11 +863,88 @@
         : '';
       setText('calc-done-msg', result.processed + ' empleados liquidados · versión v' + result.version + ' · ' + state.periodLabel +
         (result.skipped ? ' · ' + result.skipped + ' omitidos' : '') + aviso);
+
+      // ¿Este mes cierra un ciclo? Entonces falta cobrar el 20% devengado, y el
+      // asistente lo encadena aquí mismo en vez de dejarlo en otra pantalla.
+      state.closesCycle = result.closesCycle || null;
+      revealPayoutStep();
     } catch (e) {
       el('calc-progress').classList.add('hidden');
       el('calc-ready').classList.remove('hidden');
       var box = el('calc-error');
       setText('calc-error-msg', e.message || 'No se pudo ejecutar el cálculo.');
+      box.classList.remove('hidden'); box.classList.add('flex');
+    }
+  });
+
+  // ---- Paso 6: liquidar el 20% del ciclo (POST /incentives/calculate-cycle) ----
+
+  /** Muestra u oculta el paso 6 según si el mes calculado cierra un ciclo. */
+  function revealPayoutStep() {
+    var on = !!state.closesCycle;
+    el('step-6').classList.toggle('hidden', !on);
+    el('step-bar-5').classList.toggle('hidden', !on);
+    el('calc-to-payout').classList.toggle('hidden', !on);
+    if (on) {
+      setText('payout-title', 'Liquidar el 20% · ' + state.closesCycle.label);
+      // El paso 6 se vuelve navegable; el stepper solo deja ir a pasos hechos.
+      el('step-6').classList.add('step--clickable');
+    }
+  }
+
+  el('calc-to-payout').addEventListener('click', function () { goStep(6); });
+
+  /**
+   * Previsualiza sin escribir nada. Es un `dryRun`: devuelve exactamente lo que
+   * se pagaría, para que la cifra se vea antes de confirmarla.
+   */
+  async function loadPayoutPreview() {
+    if (!state.closesCycle) return;
+    var box = el('payout-preview');
+    var btn = el('payout-btn');
+    btn.disabled = true;
+    box.innerHTML = '<p class="text-label-sm text-on-surface-variant">Calculando la previsualización…</p>';
+    try {
+      var p = await A.post('/incentives/calculate-cycle', { periodId: state.closesCycle.periodId, dryRun: true });
+      box.innerHTML =
+        '<div class="flex flex-wrap items-baseline gap-x-6 gap-y-2">' +
+          '<div><span class="text-headline-md font-headline-md text-on-surface">' + A.money(p.totalPaid) + '</span>' +
+          '<span class="text-label-sm text-on-surface-variant ml-2">a pagar</span></div>' +
+          '<div><span class="text-on-surface font-medium">' + p.paidEmployees + ' de ' + p.processed + '</span>' +
+          '<span class="text-label-sm text-on-surface-variant ml-2">empleados cobran</span></div>' +
+          '<div><span class="text-on-surface font-medium">' + p.months + '</span>' +
+          '<span class="text-label-sm text-on-surface-variant ml-2">meses en el ciclo</span></div>' +
+        '</div>';
+      btn.disabled = false;
+    } catch (e) {
+      box.innerHTML = '<p class="text-label-sm text-on-surface-variant">— ' +
+        A.escapeHtml(e.message || 'No se pudo previsualizar la liquidación.') + '</p>';
+    }
+  }
+
+  el('payout-btn').addEventListener('click', async function () {
+    if (!state.closesCycle) return;
+    var ok = await A.confirmAction(
+      '¿Liquidar el 20% de ' + state.closesCycle.label + '?\n\n' +
+      'Paga las bolsas devengadas de los meses cumplidos del ciclo.',
+      { confirmLabel: 'Liquidar' });
+    if (!ok) return;
+
+    el('payout-error').classList.add('hidden');
+    el('payout-ready').classList.add('hidden');
+    el('payout-progress').classList.remove('hidden');
+    try {
+      var res = await A.post('/incentives/calculate-cycle', { periodId: state.closesCycle.periodId });
+      el('payout-progress').classList.add('hidden');
+      el('payout-done').classList.remove('hidden');
+      setText('payout-done-msg',
+        res.paidEmployees + ' de ' + res.processed + ' empleados cobraron · ' +
+        A.money(res.totalPaid) + ' · ' + state.closesCycle.label);
+    } catch (e) {
+      el('payout-progress').classList.add('hidden');
+      el('payout-ready').classList.remove('hidden');
+      var box = el('payout-error');
+      setText('payout-error-msg', e.message || 'No se pudo liquidar el ciclo.');
       box.classList.remove('hidden'); box.classList.add('flex');
     }
   });

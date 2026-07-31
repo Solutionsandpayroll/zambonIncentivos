@@ -28,9 +28,17 @@ const MONTHS = [1, 2, 3, 4].map((m) => ({
   parentPeriodId: 'ciclo1',
 }));
 
-function build(metCount: number) {
+/** Marca de un mes cumplido con un solo KPI, que es el régimen normal. */
+const MET_1_KPI = { meetsKpi: true, meetsKpi2: false, kpiCount: 1 };
+
+/**
+ * @param met     meses cumplidos con un KPI (el caso normal)
+ * @param extra   marcas sueltas, para los meses medidos con dos KPIs
+ */
+function build(met: number, extra: typeof MET_1_KPI[] = []) {
+  const marks = [...Array.from({ length: met }, () => MET_1_KPI), ...extra];
   const prisma = {
-    employeeExecutionKpi: { count: jest.fn().mockResolvedValue(metCount) },
+    employeeExecutionKpi: { findMany: jest.fn().mockResolvedValue(marks) },
   };
   const periods = {
     findWithParent: jest.fn(async (id: string) =>
@@ -72,6 +80,31 @@ describe('AccrualService', () => {
 
   it('sin nada cumplido, no hay nada pendiente', async () => {
     const a = await build(0).forHeader(header());
+    expect(a!.monthsMet).toBe(0);
+    expect(a!.pendingAmount).toBe(0);
+  });
+
+  it('un mes de dos KPIs con uno solo cumplido devenga media bolsa', async () => {
+    // Enero completo (1 KPI) + febrero medido con dos, de los que cumplió uno.
+    const a = await build(1, [
+      { meetsKpi: true, meetsKpi2: false, kpiCount: 2 },
+    ]).forHeader(header());
+    expect(a!.monthsMet).toBe(1.5);
+    expect(a!.pendingAmount).toBe(300); // 200 × 1.5
+  });
+
+  it('un mes de dos KPIs con los dos cumplidos devenga la bolsa entera', async () => {
+    const a = await build(0, [
+      { meetsKpi: true, meetsKpi2: true, kpiCount: 2 },
+    ]).forHeader(header());
+    expect(a!.monthsMet).toBe(1);
+    expect(a!.pendingAmount).toBe(200);
+  });
+
+  it('un mes de dos KPIs sin ninguno cumplido no devenga nada', async () => {
+    const a = await build(0, [
+      { meetsKpi: false, meetsKpi2: false, kpiCount: 2 },
+    ]).forHeader(header());
     expect(a!.monthsMet).toBe(0);
     expect(a!.pendingAmount).toBe(0);
   });

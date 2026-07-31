@@ -15,9 +15,12 @@ import { Execution20Mode } from './execution-rules';
  *    aporte       = %comisión × peso × (80% teórico)
  *    resultado80  = Σ aportes
  *    resultado20  = según el régimen (ver `Execution20Mode`):
- *                     PAY_MONTHLY  cumpleKPI ? bolsa : 0
+ *                     PAY_MONTHLY  bolsa × logro del mes (1, 0.5 ó 0)
  *                     ACCRUE       0 — se registra y se cobra al cierre del ciclo
- *                     PAY_CYCLE    bolsa × meses cumplidos
+ *                     PAY_CYCLE    bolsa × meses cumplidos (admite medios)
+ *
+ *  El "logro del mes" es 1 ó 0 cuando el mes se mide con un solo KPI, y puede
+ *  ser 0.5 cuando se mide con dos y solo se cumplió uno (ver `execution-rules`).
  *    total        = resultado80 + resultado20
  *
  *  El pago garantizado es un PISO sobre ambos componentes, nunca un techo.
@@ -49,14 +52,24 @@ export interface EmployeeCalculationInput {
   rate20: Decimal;
   components: ComponentInput[];
   curve: PayCurve;
-  /** KPI de ejecución del 20%: true = cumple. */
+  /** KPI de ejecución del 20%: true = cumple (al menos parcialmente). */
   executionKpiResult: boolean;
+  /**
+   * Cuánto del mes se ganó: 1 con el KPI cumplido, 0.5 cuando el mes se mide
+   * con dos KPIs y solo se cumplió uno, 0 si no cumplió nada. Solo lo usa
+   * PAY_MONTHLY; si se omite se deriva de `executionKpiResult` (1 ó 0), que es
+   * el comportamiento de un mes de un solo KPI.
+   */
+  monthAchievement?: number;
   /**
    * Régimen del 20%. El motor NO consulta el tipo de periodo —es dominio puro,
    * sin Prisma—: el servicio decide el modo y se lo pasa.
    */
   execution20Mode: Execution20Mode;
-  /** Solo en PAY_CYCLE: meses del ciclo con KPI cumplido (0..4). */
+  /**
+   * Solo en PAY_CYCLE: meses cumplidos del ciclo (0..4). Puede tener medios
+   * (p. ej. 2.5) porque un mes de dos KPIs con uno solo cumplido aporta 0.5.
+   */
   metMonthsInCycle?: number;
   /** Solo en PAY_CYCLE: meses que componen el ciclo (normalmente 4). */
   cycleLengthMonths?: number;
@@ -88,7 +101,7 @@ export interface EmployeeCalculationResult {
   /**
    * Bolsas del 20% que este resultado paga: 1 mensual, N en el cierre del
    * ciclo, 0 cuando solo se devenga. Es el multiplicador REAL, no el teórico
-   * del escenario ideal.
+   * del escenario ideal. Admite medios (0.5, 2.5) por los meses de dos KPIs.
    */
   executionCycleMultiplier: number;
   details: ComponentResult[];
@@ -166,10 +179,16 @@ export function calculateEmployeeIncentive(
   let full20: Decimal;
 
   switch (input.execution20Mode) {
-    case 'PAY_MONTHLY':
+    case 'PAY_MONTHLY': {
       full20 = money(theoretical20);
-      result20 = input.executionKpiResult ? full20 : ZERO;
+      // Fracción, no booleano: un mes medido con dos KPIs y uno solo cumplido
+      // paga media bolsa. Si no viene la fracción, el mes es de un solo KPI y
+      // vale 1 ó 0.
+      const achieved =
+        input.monthAchievement ?? (input.executionKpiResult ? 1 : 0);
+      result20 = money(theoretical20.mul(achieved));
       break;
+    }
 
     case 'PAY_CYCLE': {
       // Proporcional, no todo o nada: un mes cumplido = una bolsa mensual.
@@ -195,9 +214,11 @@ export function calculateEmployeeIncentive(
 
   // Bolsas pagadas, derivadas del resultado: sirve para leer el histórico sin
   // recalcular nada. 0 en un mes que solo devenga.
+  // 2 decimales, no 0: media bolsa es un resultado válido y redondearla a
+  // entero haría que el histórico dijera "1 bolsa" donde se pagó media.
   const paidBags = theoretical20.isZero()
     ? 0
-    : Number(result20.div(theoretical20).toDecimalPlaces(0, Decimal.ROUND_HALF_UP));
+    : Number(result20.div(theoretical20).toDecimalPlaces(2, Decimal.ROUND_HALF_UP));
 
   const guaranteedPayApplied = Boolean(gp?.apply80 || gp?.apply20);
   const total = money(result80.add(result20));

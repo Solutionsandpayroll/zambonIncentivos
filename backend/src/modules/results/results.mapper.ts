@@ -73,7 +73,8 @@ export function toResultDetail(h: any) {
       theoretical: num(h.component20Theoretical),
       result: num(h.component20Result),
       kpiResult: h.executionKpiResult ?? null,
-      cycleMultiplier: h.executionCycleMultiplier,
+      // Decimal en la base (admite medias bolsas): se serializa como número.
+      cycleMultiplier: num(h.executionCycleMultiplier),
     },
     totalIncentive: num(h.totalIncentive),
     // Escenario ideal: cuánto sería cumpliendo el 100% del 80% y del 20%.

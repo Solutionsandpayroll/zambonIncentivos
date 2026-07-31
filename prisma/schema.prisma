@@ -229,6 +229,16 @@ model EmployeeExecutionKpi {
   employeeId             String   @map("employee_id")
   periodId               String   @map("period_id")
   meetsKpi               Boolean  @default(false) @map("meets_kpi")
+
+  // Algunos meses el 20% se mide con DOS KPIs en vez de uno. Cuando es así, el
+  // mes se cumple por mitades: un KPI de dos = 50% de la bolsa del mes, los dos
+  // = 100%. `kpiCount` dice con cuántos se midió ESE mes (1 o 2) y se guarda por
+  // empleado, no en el periodo, porque la decisión se toma al marcar y debe
+  // quedar congelada: cambiarla después no puede reinterpretar lo ya marcado.
+  kpiCount               Int      @default(1) @map("kpi_count")
+  // Segundo KPI. Solo se lee cuando kpiCount = 2; con kpiCount = 1 se ignora.
+  meetsKpi2              Boolean  @default(false) @map("meets_kpi_2")
+
   notes                  String?
   // Denormalizado, igual que admin_audit_log.username: evita una FK a app_user.
   markedByUsername       String?  @map("marked_by_username")
@@ -492,7 +502,10 @@ model IncentiveCalculationHeader {
   executionKpiResult         Boolean? @map("execution_kpi_result")
   executionCompliancePercent Decimal? @map("execution_compliance_percent") @db.Decimal(9, 6)
   executionPayMonthly        Boolean  @default(false) @map("execution_pay_monthly")
-  executionCycleMultiplier   Int      @default(4) @map("execution_cycle_multiplier")
+  // Bolsas del 20% que pagó este resultado. Decimal, no Int: un mes medido con
+  // dos KPIs y uno solo cumplido paga MEDIA bolsa, y un entero la redondearía a
+  // una bolsa entera o a ninguna.
+  executionCycleMultiplier   Decimal  @default(4) @map("execution_cycle_multiplier") @db.Decimal(5, 2)
 
   // Régimen bajo el que se liquidó el 20%, para que un histórico siga siendo
   // legible cuando la regla cambie:

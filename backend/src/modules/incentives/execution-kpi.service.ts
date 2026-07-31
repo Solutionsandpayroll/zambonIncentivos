@@ -7,6 +7,7 @@ import { PrismaService } from '../../shared/database/prisma.service';
 import { AuditAction, AuditService } from '../../shared/audit/audit.service';
 import { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { SaveExecutionKpiDto } from './dto/execution-kpi.dto';
+import { monthAchievementFraction } from './domain/execution-rules';
 
 /** Una fila de la pantalla de cumplimiento del 20%. */
 export interface ExecutionKpiRow {
@@ -15,6 +16,10 @@ export interface ExecutionKpiRow {
   fullName: string;
   teamName: string | null;
   meetsKpi: boolean;
+  /** Con cuántos KPIs se mide el mes de esta persona: 1 (normal) o 2. */
+  kpiCount: number;
+  /** Segundo KPI; solo cuenta cuando `kpiCount` es 2. */
+  meetsKpi2: boolean;
   notes: string | null;
   /**
    * Pago garantizado vigente en el periodo. Se expone para que la pantalla
@@ -73,7 +78,13 @@ export class ExecutionKpiService {
 
     const existing = await this.prisma.employeeExecutionKpi.findMany({
       where: { periodId, employeeId: { in: employeeIds } },
-      select: { employeeId: true, meetsKpi: true, notes: true },
+      select: {
+        employeeId: true,
+        meetsKpi: true,
+        meetsKpi2: true,
+        kpiCount: true,
+        notes: true,
+      },
     });
     const byEmployee = new Map(existing.map((k) => [k.employeeId, k]));
 
@@ -106,6 +117,10 @@ export class ExecutionKpiService {
           fullName: p.fullName ?? `${p.firstName ?? ''} ${p.lastName ?? ''}`.trim(),
           teamName: s.employee.teamAssignments[0]?.team.teamName ?? null,
           meetsKpi: mark?.meetsKpi ?? false,
+          // Sin marca previa, un KPI: es el régimen normal, y los meses de dos
+          // son la excepción que Nómina activa a mano.
+          kpiCount: mark?.kpiCount ?? 1,
+          meetsKpi2: mark?.meetsKpi2 ?? false,
           notes: mark?.notes ?? null,
           guaranteed: g
             ? {
@@ -131,31 +146,45 @@ export class ExecutionKpiService {
     }
 
     await this.prisma.$transaction(
-      dto.items.map((i) =>
-        this.prisma.employeeExecutionKpi.upsert({
+      dto.items.map((i) => {
+        const kpiCount = i.kpiCount === 2 ? 2 : 1;
+        // Con un solo KPI el segundo se fuerza a false: si el mes se marcó con
+        // dos y luego se corrige a uno, dejar el viejo `meetsKpi2` en true haría
+        // que volver a poner 2 resucite una marca que nadie revisó.
+        const meetsKpi2 = kpiCount === 2 ? Boolean(i.meetsKpi2) : false;
+        const data = {
+          meetsKpi: i.meetsKpi,
+          kpiCount,
+          meetsKpi2,
+          notes: i.notes ?? null,
+          markedByUsername: user.username ?? null,
+        };
+        return this.prisma.employeeExecutionKpi.upsert({
           where: {
             employeeId_periodId: {
               employeeId: i.employeeId,
               periodId: dto.periodId,
             },
           },
-          create: {
-            employeeId: i.employeeId,
-            periodId: dto.periodId,
-            meetsKpi: i.meetsKpi,
-            notes: i.notes ?? null,
-            markedByUsername: user.username ?? null,
-          },
-          update: {
-            meetsKpi: i.meetsKpi,
-            notes: i.notes ?? null,
-            markedByUsername: user.username ?? null,
-          },
-        }),
-      ),
+          create: { employeeId: i.employeeId, periodId: dto.periodId, ...data },
+          update: data,
+        });
+      }),
     );
 
-    const meeting = dto.items.filter((i) => i.meetsKpi).length;
+    // Meses ganados, sumando fracciones: un mes de dos KPIs con uno cumplido
+    // cuenta 0.5. Contar filas con `meetsKpi` diría "cumple" donde cumplió a
+    // medias.
+    const meeting = dto.items.reduce(
+      (sum, i) =>
+        sum +
+        monthAchievementFraction(
+          i.kpiCount === 2 ? 2 : 1,
+          i.meetsKpi,
+          Boolean(i.meetsKpi2),
+        ),
+      0,
+    );
 
     // Queda en auditoría: decide si alguien cobra o no el 20%.
     await this.audit.record({

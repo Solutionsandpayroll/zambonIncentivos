@@ -56,3 +56,31 @@ export function execution20ModeFor(
 export function theoreticalMultiplierFor(pays20Monthly: boolean): number {
   return pays20Monthly ? 1 : MONTHS_PER_CYCLE;
 }
+
+/**
+ * Cuánto de la bolsa del 20% gana un mes: 0, 0.5 o 1.
+ *
+ * Casi todos los meses se miden con UN KPI y el mes es todo o nada. Pero hay
+ * meses medidos con DOS, y ahí el mes se parte por mitades: cumplir uno de los
+ * dos gana medio mes, cumplir los dos gana el mes entero.
+ *
+ * Devuelve una FRACCIÓN, no un booleano, porque "medio mes cumplido" no cabe en
+ * un booleano y redondearlo a cumple/no cumple pagaría de más o de menos media
+ * bolsa en cada mes de dos KPIs.
+ *
+ * @param kpiCount   con cuántos KPIs se midió el mes (1 o 2); cualquier otro
+ *                   valor se trata como 1, que es el régimen normal
+ * @param meetsKpi   cumplimiento del primer KPI
+ * @param meetsKpi2  cumplimiento del segundo; se ignora si kpiCount no es 2
+ */
+export function monthAchievementFraction(
+  kpiCount: number,
+  meetsKpi: boolean,
+  meetsKpi2: boolean,
+): number {
+  if (kpiCount === 2) {
+    const met = (meetsKpi ? 1 : 0) + (meetsKpi2 ? 1 : 0);
+    return met / 2;
+  }
+  return meetsKpi ? 1 : 0;
+}

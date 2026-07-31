@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Decimal } from '@prisma/client/runtime/library';
 import { PrismaService } from '../../shared/database/prisma.service';
 import { EmployeeCalculationResult } from './domain/calculation-engine';
+import { monthAchievementFraction } from './domain/execution-rules';
 import { preferMonthOverCycle } from '../../shared/periods/parameter-precedence';
 
 /** Insumos crudos de un empleado para un periodo, ya agregados. */
@@ -20,7 +21,10 @@ export interface EmployeeInputs {
     weight: Decimal;
   }[];
   guaranteedPay: { apply80: boolean; apply20: boolean } | null;
+  /** ¿Cumplió algo del KPI del mes? Se conserva para el histórico y reportes. */
   executionKpiResult: boolean;
+  /** Cuánto del mes ganó: 1, 0.5 (dos KPIs, uno cumplido) ó 0. */
+  monthAchievement: number;
 }
 
 @Injectable()
@@ -178,8 +182,13 @@ export class IncentivesRepository {
     // Cumplimiento del KPI del 20%, marcado por Nómina antes de calcular.
     const kpi = await this.prisma.employeeExecutionKpi.findUnique({
       where: { employeeId_periodId: { employeeId, periodId } },
-      select: { meetsKpi: true },
+      select: { meetsKpi: true, meetsKpi2: true, kpiCount: true },
     });
+
+    // Logro del mes: 1, 0.5 (mes de dos KPIs con uno cumplido) ó 0.
+    const monthAchievement = kpi
+      ? monthAchievementFraction(kpi.kpiCount, kpi.meetsKpi, kpi.meetsKpi2)
+      : 0;
 
     return {
       employeeId,
@@ -195,7 +204,11 @@ export class IncentivesRepository {
       // menos se corrige recalculando (todo queda versionado) mientras que pagar
       // de más no. El pago garantizado del 20% sigue prevaleciendo sobre esto:
       // lo aplica el motor aparte, vía `guaranteedPay.apply20`.
-      executionKpiResult: kpi?.meetsKpi ?? false,
+      // `executionKpiResult` es el booleano histórico "cumplió algo". Lo que
+      // determina el pago es `monthAchievement`, que además distingue el medio
+      // cumplimiento de los meses de dos KPIs.
+      executionKpiResult: monthAchievement > 0,
+      monthAchievement,
     };
   }
 
@@ -226,20 +239,39 @@ export class IncentivesRepository {
   }
 
   /**
-   * Meses del ciclo con KPI cumplido, por empleado. Un solo `groupBy` en vez de
-   * una consulta por persona.
+   * Meses cumplidos del ciclo, por empleado. Una sola consulta en vez de una
+   * por persona.
+   *
+   * Suma FRACCIONES, no filas: un mes medido con dos KPIs y uno solo cumplido
+   * aporta 0.5. Por eso ya no sirve un `groupBy … _count`, que contaba cada mes
+   * como entero y pagaba una bolsa completa por medio cumplimiento.
    */
   async metMonthsByEmployee(
     monthIds: string[],
   ): Promise<Map<string, number>> {
     if (monthIds.length === 0) return new Map();
 
-    const rows = await this.prisma.employeeExecutionKpi.groupBy({
-      by: ['employeeId'],
-      where: { periodId: { in: monthIds }, meetsKpi: true },
-      _count: { _all: true },
+    const rows = await this.prisma.employeeExecutionKpi.findMany({
+      where: { periodId: { in: monthIds } },
+      select: {
+        employeeId: true,
+        meetsKpi: true,
+        meetsKpi2: true,
+        kpiCount: true,
+      },
     });
-    return new Map(rows.map((r) => [r.employeeId, r._count._all]));
+
+    const met = new Map<string, number>();
+    for (const r of rows) {
+      const fraction = monthAchievementFraction(
+        r.kpiCount,
+        r.meetsKpi,
+        r.meetsKpi2,
+      );
+      if (fraction === 0) continue;
+      met.set(r.employeeId, (met.get(r.employeeId) ?? 0) + fraction);
+    }
+    return met;
   }
 
   /**

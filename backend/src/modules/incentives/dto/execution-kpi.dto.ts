@@ -3,6 +3,8 @@ import {
   ArrayMaxSize,
   IsArray,
   IsBoolean,
+  IsIn,
+  IsInt,
   IsOptional,
   IsString,
   IsUUID,
@@ -27,6 +29,20 @@ export class ExecutionKpiItemDto {
 
   @IsBoolean()
   meetsKpi!: boolean;
+
+  /**
+   * Con cuántos KPIs se mide el 20% de este empleado en este mes: 1 (normal) o
+   * 2. Con 2, cumplir uno solo gana la mitad de la bolsa del mes.
+   */
+  @IsOptional()
+  @IsInt()
+  @IsIn([1, 2])
+  kpiCount?: number;
+
+  /** Segundo KPI. Solo se tiene en cuenta si `kpiCount` es 2. */
+  @IsOptional()
+  @IsBoolean()
+  meetsKpi2?: boolean;
 
   @IsOptional()
   @IsString()

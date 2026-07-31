@@ -105,6 +105,40 @@ describe('calculateEmployeeIncentive', () => {
       expect(r.component20Result.toNumber()).toBe(0);
     });
 
+    // Meses medidos con DOS KPIs: el mes se gana por mitades.
+    it('PAY_MONTHLY: dos KPIs con uno cumplido = media bolsa', () => {
+      const r = calculateEmployeeIncentive(
+        baseInput({
+          executionKpiResult: true,
+          monthAchievement: 0.5,
+          execution20Mode: 'PAY_MONTHLY',
+        }),
+      );
+      expect(r.component20Result.toNumber()).toBe(100); // 200 × 0.5
+      expect(r.executionCycleMultiplier).toBe(0.5);
+    });
+
+    it('PAY_MONTHLY: dos KPIs con los dos cumplidos = la bolsa entera', () => {
+      const r = calculateEmployeeIncentive(
+        baseInput({
+          executionKpiResult: true,
+          monthAchievement: 1,
+          execution20Mode: 'PAY_MONTHLY',
+        }),
+      );
+      expect(r.component20Result.toNumber()).toBe(200);
+    });
+
+    it('PAY_MONTHLY: sin `monthAchievement` manda el booleano (mes de un KPI)', () => {
+      // Compatibilidad: los cálculos que no pasan la fracción se comportan
+      // igual que antes, 1 ó 0.
+      expect(
+        calculateEmployeeIncentive(
+          baseInput({ executionKpiResult: true, execution20Mode: 'PAY_MONTHLY' }),
+        ).component20Result.toNumber(),
+      ).toBe(200);
+    });
+
     it('NONE: un equipo mensual no cobra nada en el cierre del ciclo', () => {
       const r = calculateEmployeeIncentive(
         baseInput({ executionKpiResult: true, execution20Mode: 'NONE' }),
@@ -136,6 +170,14 @@ describe('calculateEmployeeIncentive', () => {
 
     it('4 de 4 meses cumplidos = el ciclo completo', () => {
       expect(cycle(4).component20Result.toNumber()).toBe(800); // 200 × 4
+    });
+
+    it('2.5 meses (uno de ellos de dos KPIs a medias) = 2.5 bolsas', () => {
+      // Los medios vienen de los meses medidos con dos KPIs: no se redondean,
+      // porque redondear pagaría media bolsa de más o de menos.
+      const r = cycle(2.5);
+      expect(r.component20Result.toNumber()).toBe(500); // 200 × 2.5
+      expect(r.executionCycleMultiplier).toBe(2.5);
     });
 
     it('con garantizado, 2 de 4 igual cobra el ciclo completo', () => {
