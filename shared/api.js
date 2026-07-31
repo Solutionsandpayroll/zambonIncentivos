@@ -121,18 +121,16 @@
   /**
    * Redirige al login si no hay sesión. Llamar al tope de cada página protegida.
    *
-   * Si la contraseña la asignó un tercero (alta masiva o reset del admin),
-   * muestra el diálogo de cambio obligatorio. Se hace aquí, en la capa común,
-   * para que valga en las 19 pantallas sin repetirlo en cada una.
+   * Por decisión de negocio NO se fuerza el cambio de contraseña al entrar: la
+   * clave inicial (la cédula) es válida como credencial permanente y frenar a
+   * toda la fuerza de ventas con un diálogo sin salida costaba más de lo que
+   * aportaba. El flag `mustChangePassword` se sigue guardando y el diálogo
+   * sigue disponible en `showPasswordChangeModal()` para quien quiera cambiarla.
    */
   function requireAuth() {
     if (!getToken()) {
       redirectToLogin();
       return false;
-    }
-    const user = getUser();
-    if (user && user.mustChangePassword) {
-      showPasswordChangeModal();
     }
 
     // Ajustes de barra y sidebar comunes a todas las pantallas. Se hacen aquí y
@@ -227,9 +225,9 @@
   // ---- Cambio de contraseña obligatorio -----------------------------------
 
   /**
-   * Diálogo modal, sin salida posible salvo cambiando la contraseña: no se
-   * cierra con Escape, ni clic afuera, ni botón de cancelar. La única
-   * alternativa es cerrar sesión.
+   * Diálogo de cambio de contraseña. Ya no se impone al entrar —el sistema no
+   * obliga a cambiarla—, así que es un diálogo normal: se cierra con Escape,
+   * con clic afuera o con Cancelar.
    */
   function showPasswordChangeModal() {
     if (document.getElementById('zambon-pwd-modal')) return; // ya visible
@@ -261,8 +259,7 @@
       '<h2 id="zambon-pwd-title" style="margin:0 0 .5rem;font-size:1.15rem;',
       'font-weight:650;color:#e2e2e2">Cambia tu contraseña</h2>',
       '<p style="margin:0 0 1.25rem;font-size:.875rem;line-height:1.5;color:#c8c8ae">',
-      'Tu contraseña actual fue asignada por un administrador. Para proteger tu ',
-      'cuenta, define una nueva antes de continuar.</p>',
+      'Define una contraseña nueva para tu cuenta.</p>',
       '<form id="zambon-pwd-form" novalidate>',
       '<label style="display:block;font-size:.8rem;font-weight:600;color:#c8c8ae;',
       'margin-bottom:.3rem">Contraseña actual</label>',
@@ -281,9 +278,9 @@
       '<button id="zambon-pwd-submit" type="submit" style="width:100%;margin-top:1.25rem;',
       'padding:.7rem;border:0;border-radius:8px;background:#c3cd17;color:#303300;',
       'font-size:.9rem;font-weight:600;cursor:pointer">Guardar y continuar</button>',
-      '<button id="zambon-pwd-logout" type="button" style="width:100%;margin-top:.5rem;',
+      '<button id="zambon-pwd-cancel" type="button" style="width:100%;margin-top:.5rem;',
       'padding:.55rem;border:0;border-radius:8px;background:transparent;color:#92927a;',
-      'font-size:.8rem;cursor:pointer">Cerrar sesión</button>',
+      'font-size:.8rem;cursor:pointer">Cancelar</button>',
       '</form></div>',
     ].join('');
 
@@ -302,9 +299,20 @@
       errorBox.style.display = 'block';
     }
 
-    el('zambon-pwd-logout').addEventListener('click', function () {
+    function close() {
       document.body.style.overflow = previousOverflow;
-      logout();
+      document.removeEventListener('keydown', onKeydown);
+      overlay.remove();
+    }
+    function onKeydown(e) {
+      if (e.key === 'Escape') close();
+    }
+
+    el('zambon-pwd-cancel').addEventListener('click', close);
+    document.addEventListener('keydown', onKeydown);
+    // Clic en el velo (no en la tarjeta) cierra.
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) close();
     });
 
     el('zambon-pwd-form').addEventListener('submit', async function (e) {
@@ -336,8 +344,8 @@
         user.mustChangePassword = false;
         localStorage.setItem(USER_KEY, JSON.stringify(user));
 
-        document.body.style.overflow = previousOverflow;
-        overlay.remove();
+        close();
+        toast('Contraseña actualizada.');
       } catch (err) {
         submit.disabled = false;
         submit.textContent = 'Guardar y continuar';
