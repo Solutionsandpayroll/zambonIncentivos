@@ -15,6 +15,7 @@ import { PeriodResolverService } from '../../shared/periods/period-resolver.serv
 import { AuditAction, AuditService } from '../../shared/audit/audit.service';
 import { CalculateDto } from './dto/calculate.dto';
 import { CalculateCycleDto } from './dto/calculate-cycle.dto';
+import { periodLabel } from '../catalogs/domain/period-calendar';
 
 export interface CalculateSummary {
   periodId: string;
@@ -24,6 +25,14 @@ export interface CalculateSummary {
   status: 'CALCULATED';
   /** Empleados que devengan el 20% en un mes sin ciclo: no hay dónde cobrarlo. */
   accruingWithoutCycle: number;
+  /**
+   * Si este mes es el ÚLTIMO de su ciclo, el ciclo que queda listo para
+   * liquidar el 20% devengado. `null` en cualquier otro mes.
+   *
+   * Se devuelve aquí para que el asistente de Cálculo encadene la liquidación
+   * sin tener que preguntar aparte "¿este mes cierra algo?".
+   */
+  closesCycle: { periodId: string; label: string } | null;
 }
 
 export interface CycleSummary {
@@ -150,6 +159,7 @@ export class IncentivesService {
         components: inputs.components,
         curve,
         executionKpiResult: inputs.executionKpiResult,
+        monthAchievement: inputs.monthAchievement,
         execution20Mode,
         guaranteedPay: inputs.guaranteedPay,
       });
@@ -183,6 +193,42 @@ export class IncentivesService {
       skipped,
       status: 'CALCULATED',
       accruingWithoutCycle,
+      closesCycle: await this.cycleClosedBy(dto.periodId),
+    };
+  }
+
+  /**
+   * El ciclo que este mes CIERRA, o `null` si no cierra ninguno.
+   *
+   * Un mes cierra su ciclo cuando es el último de los cuatro. Es la señal que
+   * usa el asistente de Cálculo para ofrecer la liquidación del 20% justo
+   * después de calcular ese mes, en vez de dejarla escondida en otra pantalla
+   * donde se olvidaba y el devengo se quedaba sin cobrar.
+   */
+  private async cycleClosedBy(
+    monthPeriodId: string,
+  ): Promise<{ periodId: string; label: string } | null> {
+    const month = await this.periods.findWithParent(monthPeriodId);
+    if (!month?.parentPeriodId) return null;
+
+    const cycle = await this.periods.findWithParent(month.parentPeriodId);
+    if (!cycle) return null;
+
+    // Ya liquidado o sellado: no hay nada que ofrecer.
+    if (cycle.isClosed) return null;
+
+    const months = await this.periods.monthsOfCycle(cycle.periodId);
+    const last = months[months.length - 1];
+    if (!last || last.periodId !== monthPeriodId) return null;
+
+    return {
+      periodId: cycle.periodId,
+      label: periodLabel({
+        periodYear: cycle.periodYear,
+        periodMonth: cycle.periodMonth,
+        periodType: cycle.periodType,
+        cycleNumber: cycle.cycleNumber,
+      }),
     };
   }
 

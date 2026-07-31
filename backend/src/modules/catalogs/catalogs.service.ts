@@ -215,8 +215,13 @@ export class CatalogsService {
         where: { periodId },
       });
       if (payouts === 0) {
+        // Se nombra dónde se hace, porque ya no está en esta pantalla: la
+        // liquidación del 20% es el último paso del asistente de Cálculo, sobre
+        // el mes que cierra el ciclo.
         throw new ConflictException(
-          'El ciclo no tiene liquidación calculada: ejecútela antes de cerrarlo',
+          'El ciclo no tiene liquidación calculada: liquide el 20% desde ' +
+            'Cálculo (último paso, al calcular el mes que cierra el ciclo) ' +
+            'antes de cerrarlo',
         );
       }
     }

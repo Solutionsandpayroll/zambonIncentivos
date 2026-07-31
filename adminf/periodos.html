@@ -284,12 +284,11 @@
         if (p.isClosed) {
           accion = '<span class="text-label-sm text-on-surface-variant">—</span>';
         } else {
-          // Un ciclo se liquida antes de cerrarse: es donde se paga el 20%
-          // devengado de sus cuatro meses. El backend rechaza cerrarlo sin eso.
-          accion = (p.periodType === 'CYCLE'
-            ? '<button data-payout="' + p.periodId + '" data-name="' + name + '" class="z-btn z-btn--secondary !py-1 !px-2.5 !text-[11px] mr-1.5"><span class="material-symbols-outlined text-[15px]">payments</span>Liquidar 20%</button>'
-            : '') +
-            '<button data-close="' + p.periodId + '" data-name="' + name + '" class="z-btn z-btn--secondary !py-1 !px-2.5 !text-[11px]"><span class="material-symbols-outlined text-[15px]">lock</span>Cerrar</button>';
+          // La liquidación del 20% de un ciclo YA NO se hace aquí: vive en el
+          // asistente de Cálculo, como último paso del mes que cierra el ciclo.
+          // Tenerla en dos sitios era tenerla en ninguno: se olvidaba, y el
+          // devengo de cuatro meses se quedaba sin cobrar.
+          accion = '<button data-close="' + p.periodId + '" data-name="' + name + '" class="z-btn z-btn--secondary !py-1 !px-2.5 !text-[11px]"><span class="material-symbols-outlined text-[15px]">lock</span>Cerrar</button>';
         }
         var rango = p.startDate ? (p.startDate.slice(0, 10) + ' → ' + (p.endDate || '').slice(0, 10)) : '—';
         var tr = document.createElement('tr');
@@ -306,9 +305,6 @@
       body.querySelectorAll('[data-close]').forEach(function (btn) {
         btn.addEventListener('click', function () { closePeriod(btn.dataset.close, btn.dataset.name); });
       });
-      body.querySelectorAll('[data-payout]').forEach(function (btn) {
-        btn.addEventListener('click', function () { payoutCycle(btn.dataset.payout, btn.dataset.name); });
-      });
     } catch (e) {
       body.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-on-surface-variant text-sm">— No se pudieron cargar los periodos.</td></tr>';
     }
@@ -323,28 +319,6 @@
       load();
     } catch (e) {
       A.toast(e.message || 'No se pudo cerrar el periodo.', 'error');
-    }
-  }
-
-  // ---- Liquidar el 20% devengado de un ciclo ----
-  // Se previsualiza siempre antes de escribir: mueve el 20% de cuatro meses de
-  // toda la fuerza de ventas, y la cifra exacta debe verse antes de confirmar.
-  async function payoutCycle(id, name) {
-    try {
-      var prev = await A.post('/incentives/calculate-cycle', { periodId: id, dryRun: true });
-      var ok = await A.confirmAction(
-        '¿Liquidar el 20% de ' + name + '?\n\n' +
-        prev.paidEmployees + ' de ' + prev.processed + ' empleados cobran · ' +
-        A.money(prev.totalPaid) + ' en total\n' +
-        'Una bolsa mensual por cada mes cumplido de los ' + prev.months + ' del ciclo.',
-        { confirmLabel: 'Liquidar' });
-      if (!ok) return;
-
-      var res = await A.post('/incentives/calculate-cycle', { periodId: id });
-      A.toast(res.paidEmployees + ' empleados liquidados · ' + A.money(res.totalPaid));
-      load();
-    } catch (e) {
-      A.toast(e.message || 'No se pudo liquidar el ciclo.', 'error');
     }
   }
 
