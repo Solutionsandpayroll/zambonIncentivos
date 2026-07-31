@@ -48,7 +48,7 @@ Implementado en esta iteración:
 - **Frontend servido** por NestJS (`ServeStaticModule`, mismo origen): la raíz `/`
   redirige al login; `/api/v1/*` es la API. El cliente `shared/api.js` maneja JWT,
   refresh y helpers de formato (`—` para nulos) + UI (`fillSidebar`, `toast`,
-  `confirmAction`). **Las 19 pantallas conectadas** de verdad: login, results, home,
+  `confirmAction`). **Las 18 pantallas conectadas** de verdad: login, results, home,
   reportes, calculof, y todo admin (parametrización, gobierno, organización, cuotas).
   El backend implementa el contrato completo de `API.md`, más extensiones:
   `home` avance por equipo; `reports` filtros zona/componente; `organization` POST de

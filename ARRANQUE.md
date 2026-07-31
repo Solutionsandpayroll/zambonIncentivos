@@ -1,6 +1,6 @@
 # Cómo arrancar el sistema Zambon
 
-El backend sirve **la API y las 19 pantallas del frontend** desde un mismo
+El backend sirve **la API y las 18 pantallas del frontend** desde un mismo
 servidor. Solo hay que arrancar el backend: no se corre nada aparte.
 
 - **URL para abrir en el navegador:** http://localhost:3000
