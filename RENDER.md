@@ -67,7 +67,27 @@ El primero será `JWT_SECRET`, el segundo `REFRESH_TOKEN_SECRET`.
 
 ---
 
-## 3. Crear el servicio
+## 3. Aplicar las migraciones desde tu máquina
+
+El plan **Free** de Render no permite órdenes previas al despliegue
+(`pre-deploy command is not supported for free tier services`), así que las
+migraciones no corren solas. Aplícalas tú antes de desplegar — es la misma base
+de Supabase, da igual desde dónde se ejecuten:
+
+```bash
+cd c:/Users/juanc/Documents/zambon/backend
+npm run migrate:deploy
+```
+
+`migrate deploy` solo aplica lo pendiente y nunca reescribe el historial. Si no
+hay nada pendiente, termina sin hacer cambios.
+
+> Repite este paso cada vez que un cambio incluya una migración nueva, **antes**
+> del `git push` que dispara el despliegue.
+
+---
+
+## 4. Crear el servicio
 
 1. Entra a [dashboard.render.com](https://dashboard.render.com) → **New +** → **Blueprint**
 2. Conecta el repositorio `Solutionsandpayroll/zambonIncentivos`
@@ -75,7 +95,7 @@ El primero será `JWT_SECRET`, el segundo `REFRESH_TOKEN_SECRET`.
 
 ---
 
-## 4. Cargar las 4 variables
+## 5. Cargar las 4 variables
 
 En el panel del servicio → **Environment** → añade:
 
@@ -92,7 +112,7 @@ En el panel del servicio → **Environment** → añade:
 
 ---
 
-## 5. Desplegar
+## 6. Desplegar
 
 **Apply** / **Create**. Tarda unos minutos. Cuando el estado sea **Live**, abre
 la URL: debe redirigir al login.
@@ -102,7 +122,7 @@ Comprobación de salud:
 
 ---
 
-## 6. Entrar y verificar
+## 7. Entrar y verificar
 
 Entra con el usuario **admin** y su contraseña. Recorre esta lista corta:
 
@@ -124,14 +144,14 @@ El Build Command perdió `--include=dev`. Debe ser exactamente:
 npm ci --include=dev && npx prisma generate --schema=../prisma/schema.prisma && npm run build
 ```
 
-**`P1000: Authentication failed` en el preDeploy**
-Las migraciones no pasan por el pooler de Supabase. Quita el
-`preDeployCommand` del `render.yaml` y corre desde tu máquina:
-```bash
-cd backend
-npm run migrate:deploy
-```
-Es la misma base de datos, así que da igual desde dónde se apliquen.
+**`pre-deploy command is not supported for free tier services`**
+El plan Free no admite `preDeployCommand`; el `render.yaml` ya no lo lleva. Las
+migraciones van a mano (paso 3). Si vuelve a aparecer, borra esa línea del
+`render.yaml`.
+
+**El deploy arranca pero una tabla o columna nueva no existe**
+Te saltaste el paso 3. Corre `npm run migrate:deploy` desde `backend/` y
+vuelve a desplegar.
 
 **El deploy queda colgado en "in progress" y muere por timeout**
 Es el bind del puerto. `main.ts` ya escucha en `0.0.0.0`; verifica que no se

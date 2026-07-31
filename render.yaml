@@ -28,10 +28,13 @@ services:
       npx prisma generate --schema=../prisma/schema.prisma &&
       npm run build
 
-    # Las migraciones se aplican al desplegar, antes de que entre tráfico.
-    # `migrate deploy` solo aplica lo pendiente y nunca reescribe el historial
-    # (a diferencia de `migrate dev`, que jamás debe correr en producción).
-    preDeployCommand: npm run migrate:deploy
+    # Sin `preDeployCommand`: el plan `free` de Render no lo admite ("pre-deploy
+    # command is not supported for free tier services"). Las migraciones se
+    # aplican a mano desde una máquina con el `.env`, contra la misma base de
+    # Supabase, ANTES de desplegar:
+    #     cd backend && npm run migrate:deploy
+    # Al pasar a plan `starter` se puede reactivar descomentando la línea:
+    # preDeployCommand: npm run migrate:deploy
 
     startCommand: npm run start:prod
 

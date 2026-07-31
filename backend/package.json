@@ -34,7 +34,7 @@
     "mark:monthly-20": "ts-node -r tsconfig-paths/register src/database/seed/mark-monthly-20-teams.ts",
     "seed:periods": "ts-node -r tsconfig-paths/register src/database/seed/seed-periods-year.ts",
     "promote:params": "ts-node -r tsconfig-paths/register src/database/seed/promote-params-to-cycle.ts",
-    "migrate:deploy": "prisma migrate deploy --schema=../prisma/schema.prisma"
+    "migrate:deploy": "ts-node -r tsconfig-paths/register src/database/seed/migrate-deploy.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.15",
