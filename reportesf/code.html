@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="https://cdn.tailwindcss.com?plugins=container-queries"></script>
 <!-- ===== Zambon OS shared theme (source: /shared/zambon-theme.js) ===== -->
 <script id="tailwind-config">
   tailwind.config = {
@@ -53,7 +53,13 @@
 </script>
 <!-- ===== Zambon OS shared base (source: /shared/zambon-base.html) ===== -->
 <style id="zambon-base">
-  :root { --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); }
+  /* Interfaz oscura y solo oscura. Sin color-scheme el navegador asume el esquema
+     claro y pinta todo control nativo con su fondo blanco y texto gris claro
+     (mas calendario, spinners, scrollbar y caret). Es la raiz del arreglo;
+     .z-input/.cell-input solo pintan encima. */
+  :root { color-scheme: dark; --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); }
+  input, select, textarea { color: #e2e2e2; font-family: inherit; }
+  input::placeholder, textarea::placeholder { color: #92927a; opacity: 1; }
   body { background-color: #121414; color: #e2e2e2; }
   .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
   ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -98,6 +104,15 @@
     -webkit-box-shadow: 0 0 0 1000px #1a1c1c inset;
   }
   .z-input:focus { outline: none; border-bottom-color: #c3cd17; box-shadow: none; }
+  /* Blindaje anti-regresion. El plugin 'forms' de Tailwind pintaba
+     [type='text'|'number'|'date'...] con background-color:#fff, misma
+     especificidad (0,1,0) que .z-input pero inyectado despues por el CDN, asi
+     que ganaba por orden y los campos salian blancos con texto gris. Se quito
+     el plugin; estas reglas (0,2,0) evitan que cualquier CSS externo lo repita. */
+  input.z-input[type], textarea.z-input, select.z-input,
+  input.cell-input[type] { background-color: rgba(26,28,28,0.55); color: #e2e2e2; }
+  input.cell-input[type]:focus { background-color: rgba(195,205,23,0.06); }
+  select.z-input { appearance: none; -webkit-appearance: none; }
   .z-rise { animation: z-rise 300ms var(--ease-out) both; }
   .z-rise-1 { animation-delay: 40ms; } .z-rise-2 { animation-delay: 80ms; } .z-rise-3 { animation-delay: 120ms; } .z-rise-4 { animation-delay: 160ms; }
   @keyframes z-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -131,17 +146,14 @@
 <div class="px-6 mt-auto pt-6 border-t border-white/5">
 <div class="flex items-center gap-3">
 <div class="w-10 h-10 rounded-full bg-surface-container-high border border-white/10 flex items-center justify-center overflow-hidden shrink-0"><span class="material-symbols-outlined text-on-surface-variant text-[20px]">person</span></div>
-<div class="overflow-hidden"><p id="sidebar-user" class="font-label-bold text-label-bold text-on-surface truncate">—</p><p id="sidebar-role" class="font-label-sm text-label-sm text-on-surface-variant truncate">—</p></div>
+<div class="overflow-hidden"><p class="font-label-bold text-label-bold text-on-surface truncate" data-user-name>—</p><p class="font-label-sm text-label-sm text-on-surface-variant truncate" data-user-role>—</p></div>
 </div>
 </div>
 </aside>
 <main class="flex-1 md:ml-64 flex flex-col min-w-0">
 <!-- ===== Top bar ===== -->
 <header class="z-topbar">
-<div class="relative w-full max-w-md group">
-<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-primary-container transition-colors">search</span>
-<input class="z-input pl-10 text-sm" placeholder="Buscar empleado por cédula o nombre..." type="text"/>
-</div>
+<div></div>
 <div class="flex items-center gap-4">
 <button class="p-2 text-on-surface-variant hover:text-primary-container transition-colors relative"><span class="material-symbols-outlined">notifications</span><span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span></button>
 <button class="p-2 text-on-surface-variant hover:text-primary-container transition-colors"><span class="material-symbols-outlined">settings</span></button>
@@ -171,6 +183,10 @@
 <span class="font-label-sm text-label-sm text-on-surface-variant">Periodo</span>
 <select id="f-period" class="z-input text-sm"><option value="">Selecciona…</option></select>
 </label>
+<label class="flex flex-col gap-1 col-span-2 md:col-span-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Varios periodos</span>
+<button id="f-multi-toggle" type="button" class="z-btn z-btn--ghost !py-2 !px-3 !text-xs justify-start"><span class="material-symbols-outlined text-[16px]">date_range</span><span id="f-multi-label">Solo uno</span></button>
+</label>
 <label class="flex flex-col gap-1">
 <span class="font-label-sm text-label-sm text-on-surface-variant">Equipo</span>
 <select id="f-team" class="z-input text-sm"><option value="">Todos</option></select>
@@ -186,6 +202,16 @@
 <div class="flex gap-2">
 <button id="f-apply" class="z-btn z-btn--ghost flex-1"><span class="material-symbols-outlined text-[18px]">filter_alt</span>Filtrar</button>
 </div>
+</div>
+
+<!-- Selección de varios periodos: al activarla, el consolidado suma todos los
+     marcados y el selector de arriba deja de mandar. -->
+<div id="f-multi-panel" class="hidden mt-4 pt-4 border-t border-white/5">
+<div class="flex items-center justify-between mb-3">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Periodos incluidos en el consolidado</span>
+<span id="f-multi-count" class="z-pill z-pill--muted">0</span>
+</div>
+<div id="f-multi-list" class="flex flex-wrap gap-x-6 gap-y-2"></div>
 </div>
 </div>
 
@@ -206,6 +232,7 @@
 <div class="glass-card rounded-xl p-5 glow-lime border-primary-container/20">
 <p class="text-label-sm text-on-surface-variant">Total a pagar</p>
 <p id="sum-total" class="num-cell text-headline-md text-primary-container mt-1">—</p>
+<p id="sum-ideal" class="text-label-sm text-on-surface-variant mt-1">—</p>
 </div>
 </div>
 
@@ -225,9 +252,12 @@
 <th class="font-label-bold py-2.5 px-2">Cédula</th>
 <th class="font-label-bold py-2.5 px-2">Empleado</th>
 <th class="font-label-bold py-2.5 px-2">Equipo</th>
+<th class="font-label-bold py-2.5 px-2">Periodo</th>
 <th class="font-label-bold py-2.5 px-2 text-right">80%</th>
 <th class="font-label-bold py-2.5 px-2 text-right">20%</th>
 <th class="font-label-bold py-2.5 px-2 text-right">Total</th>
+<th class="font-label-bold py-2.5 px-2 text-right">Ideal (100%)</th>
+<th class="font-label-bold py-2.5 px-2 text-right">Logro</th>
 <th class="font-label-bold py-2.5 px-2">Estado</th>
 </tr>
 </thead>
@@ -275,22 +305,24 @@
   var A = ZambonAPI;
   var el = function (id) { return document.getElementById(id); };
   function setText(id, v) { var n = el(id); if (n) n.textContent = v; }
+  // Perfil del sidebar: lo rellena la capa compartida desde la sesión.
+  A.fillSidebar();
 
-  var user = A.getUser() || {};
-  setText('sidebar-user', user.username || '—');
-  setText('sidebar-role', (user.roles && user.roles[0]) || '—');
-
-  var state = { scope: 'CONSOLIDATED', periodId: '', teamId: '', zoneId: '', componentId: '' };
+  var state = { scope: 'CONSOLIDATED', periodId: '', periodIds: [], periods: [], teamId: '', zoneId: '', componentId: '' };
 
   // ---- Filtros ----
   async function loadFilters() {
     try {
-      var periods = await A.get('/periods');
+      // Los reportes miran ambos: los meses traen el 80% y el ciclo el 20%.
+      var periods = await A.listPeriods('all');
       var sel = el('f-period');
       periods.forEach(function (p) {
+        var label = p.label;
+        // Se guardan para el panel de varios periodos, que reusa la etiqueta.
+        state.periods.push({ periodId: p.periodId, label: label });
         var o = document.createElement('option');
         o.value = p.periodId;
-        o.textContent = p.periodYear + '-' + String(p.periodMonth).padStart(2, '0') + (p.periodType === 'CYCLE' ? ' (ciclo)' : '');
+        o.textContent = label;
         sel.appendChild(o);
       });
       if (periods.length) { sel.value = periods[0].periodId; state.periodId = periods[0].periodId; }
@@ -315,18 +347,59 @@
   // ---- Consulta según alcance ----
   function currentQuery() {
     var q = [];
-    if (state.periodId) q.push('periodId=' + encodeURIComponent(state.periodId));
+    // Con varios periodos marcados manda `periodIds`; si no, el selector único.
+    if (state.periodIds.length) q.push('periodIds=' + encodeURIComponent(state.periodIds.join(',')));
+    else if (state.periodId) q.push('periodId=' + encodeURIComponent(state.periodId));
     if (state.teamId) q.push('teamId=' + encodeURIComponent(state.teamId));
     if (state.zoneId) q.push('zoneId=' + encodeURIComponent(state.zoneId));
     if (state.componentId) q.push('componentId=' + encodeURIComponent(state.componentId));
     return q.length ? '?' + q.join('&') : '';
   }
 
+  // ---- Varios periodos ----
+  function renderMultiPeriods() {
+    var box = el('f-multi-list');
+    box.innerHTML = '';
+    (state.periods || []).forEach(function (p) {
+      var id = 'mp-' + p.periodId;
+      var wrap = document.createElement('label');
+      wrap.className = 'flex items-center gap-2 text-sm text-on-surface cursor-pointer';
+      wrap.innerHTML = '<input type="checkbox" class="mp-check cursor-pointer" value="' + p.periodId + '"' +
+        (state.periodIds.indexOf(p.periodId) !== -1 ? ' checked' : '') + ' id="' + id + '"/>' +
+        '<span>' + A.escapeHtml(p.label) + '</span>';
+      box.appendChild(wrap);
+    });
+    box.querySelectorAll('.mp-check').forEach(function (c) {
+      c.addEventListener('change', function () {
+        var i = state.periodIds.indexOf(c.value);
+        if (c.checked && i === -1) state.periodIds.push(c.value);
+        else if (!c.checked && i !== -1) state.periodIds.splice(i, 1);
+        el('f-multi-count').textContent = state.periodIds.length;
+      });
+    });
+    el('f-multi-count').textContent = state.periodIds.length;
+  }
+
+  el('f-multi-toggle').addEventListener('click', function () {
+    var panel = el('f-multi-panel');
+    var opening = panel.classList.contains('hidden');
+    panel.classList.toggle('hidden', !opening);
+    el('f-period').disabled = opening;
+    setText('f-multi-label', opening ? 'Varios' : 'Solo uno');
+    if (opening) {
+      // Arranca con el periodo que ya estaba elegido, para no perder el contexto.
+      if (!state.periodIds.length && state.periodId) state.periodIds = [state.periodId];
+      renderMultiPeriods();
+    } else {
+      state.periodIds = [];
+    }
+  });
+
   async function loadReport() {
     var body = el('rep-body');
-    body.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-on-surface-variant text-sm">Cargando…</td></tr>';
-    if (!state.periodId) {
-      body.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-on-surface-variant text-sm">— Selecciona un periodo.</td></tr>';
+    body.innerHTML = '<tr><td colspan="10" class="py-6 text-center text-on-surface-variant text-sm">Cargando…</td></tr>';
+    if (!state.periodId && !state.periodIds.length) {
+      body.innerHTML = '<tr><td colspan="10" class="py-6 text-center text-on-surface-variant text-sm">— Selecciona un periodo.</td></tr>';
       resetSummary();
       return;
     }
@@ -334,7 +407,7 @@
       var data;
       if (state.scope === 'TEAM') {
         if (!state.teamId) {
-          body.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-on-surface-variant text-sm">— Selecciona un equipo para el reporte por equipo.</td></tr>';
+          body.innerHTML = '<tr><td colspan="10" class="py-6 text-center text-on-surface-variant text-sm">— Selecciona un equipo para el reporte por equipo.</td></tr>';
           resetSummary(); return;
         }
         data = await A.get('/reports/team/' + encodeURIComponent(state.teamId) + '?periodId=' + encodeURIComponent(state.periodId));
@@ -344,13 +417,13 @@
       }
       renderReport(data);
     } catch (e) {
-      body.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-on-surface-variant text-sm">— No se pudo cargar el reporte.</td></tr>';
+      body.innerHTML = '<tr><td colspan="10" class="py-6 text-center text-on-surface-variant text-sm">— No se pudo cargar el reporte.</td></tr>';
       resetSummary();
     }
   }
 
   function resetSummary() {
-    setText('sum-count', '—'); setText('sum-80', '—'); setText('sum-20', '—'); setText('sum-total', '—');
+    setText('sum-count', '—'); setText('sum-80', '—'); setText('sum-20', '—'); setText('sum-total', '—'); setText('sum-ideal', '—');
     setText('table-count', '—'); setText('rep-footer', '—');
   }
 
@@ -360,13 +433,16 @@
     setText('sum-80', A.money(totals.total80));
     setText('sum-20', A.money(totals.total20));
     setText('sum-total', A.money(totals.totalIncentive));
+    setText('sum-ideal', totals.totalIdeal
+      ? ('de ' + A.money(totals.totalIdeal) + ' ideal · ' + achievementText(totals.achievementPercent))
+      : A.DASH);
     setText('table-count', rows.length + ' resultados');
     setText('rep-footer', 'Mostrando ' + rows.length + ' resultados');
 
     var body = el('rep-body');
     body.innerHTML = '';
     if (!rows.length) {
-      body.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-on-surface-variant text-sm">— Sin liquidaciones para este filtro.</td></tr>';
+      body.innerHTML = '<tr><td colspan="10" class="py-8 text-center text-on-surface-variant text-sm">— Sin liquidaciones para este filtro.</td></tr>';
       return;
     }
     rows.forEach(function (r) {
@@ -379,35 +455,80 @@
         '<td class="py-3 px-2 num-cell text-on-surface-variant">' + A.escapeHtml(A.orDash(r.documentNumber)) + '</td>' +
         '<td class="py-3 px-2 text-on-surface">' + A.escapeHtml(A.orDash(r.fullName)) + '</td>' +
         '<td class="py-3 px-2 text-on-surface-variant">' + A.escapeHtml(A.orDash(r.team)) + '</td>' +
+        '<td class="py-3 px-2 num-cell text-on-surface-variant">' + A.escapeHtml(A.orDash(r.period)) + '</td>' +
         '<td class="py-3 px-2 text-right num-cell text-on-surface">' + A.money(r.component80) + '</td>' +
         '<td class="py-3 px-2 text-right num-cell text-on-surface">' + A.money(r.component20) + '</td>' +
         '<td class="py-3 px-2 text-right num-cell text-on-surface font-semibold">' + A.money(r.totalIncentive) + '</td>' +
+        '<td class="py-3 px-2 text-right num-cell text-on-surface-variant">' + A.money(r.idealTotal) + '</td>' +
+        '<td class="py-3 px-2 text-right num-cell ' + achievementClass(r.achievementPercent) + '">' + achievementText(r.achievementPercent) + '</td>' +
         '<td class="py-3 px-2">' + estado + '</td>';
       body.appendChild(tr);
     });
   }
 
+  /** Texto del logro: '—' cuando no hay ideal contra el cual comparar. */
+  function achievementText(v) {
+    return v === null || v === undefined ? A.DASH : Math.round(v * 100) + '%';
+  }
+
+  /** Verde si alcanzó o superó el ideal, ámbar cerca, rojo lejos. */
+  function achievementClass(v) {
+    if (v === null || v === undefined) return 'text-on-surface-variant';
+    if (v >= 1) return 'text-primary-container';
+    if (v >= 0.8) return 'text-on-surface';
+    return 'text-error';
+  }
+
   // ---- Exportación (descarga blob) ----
   async function doExport(format) {
-    if (!state.periodId) { alert('Selecciona un periodo antes de exportar.'); return; }
+    // El archivo cubre exactamente lo que muestra la tabla: si hay varios
+    // periodos marcados, se exportan todos y cada fila trae su periodo.
+    var multi = state.periodIds.length > 0;
+    if (!multi && !state.periodId) {
+      A.toast('Selecciona un periodo antes de exportar.', 'error');
+      return;
+    }
+
     var type = state.scope === 'TEAM' ? 'TEAM' : 'CONSOLIDATED';
-    var filters = { periodId: state.periodId };
+    var filters = multi ? { periodIds: state.periodIds } : { periodId: state.periodId };
     if (state.teamId) filters.teamId = state.teamId;
+
+    var btn = el(format === 'PDF' ? 'exp-pdf' : 'exp-xlsx');
+    var prev = btn ? btn.innerHTML : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="material-symbols-outlined text-[18px]">hourglass_top</span>Generando…';
+    }
     try {
       var res = await fetch('/api/v1/reports/export', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + A.getToken() },
         body: JSON.stringify({ type: type, format: format, filters: filters }),
       });
-      if (!res.ok) throw new Error('export');
+      if (!res.ok) {
+        // El backend explica el motivo real (403 fuera de alcance, 400 datos
+        // faltantes); mostrarlo es accionable, un "no se pudo" genérico no.
+        var msg = 'No se pudo generar la exportación.';
+        try { var j = await res.json(); if (j && j.message) msg = j.message; } catch (_) {}
+        throw new Error(msg);
+      }
       var blob = await res.blob();
       var url = URL.createObjectURL(blob);
       var a = document.createElement('a');
+      var name = 'reporte';
+      var cd = res.headers.get('Content-Disposition') || '';
+      var m = cd.match(/filename="?([^"]+)"?/);
+      if (m) { try { name = decodeURIComponent(m[1]); } catch (_) { name = m[1]; } }
+      else { name = 'reporte.' + (format === 'PDF' ? 'pdf' : 'xlsx'); }
       a.href = url;
-      a.download = 'reporte.' + (format === 'PDF' ? 'pdf' : 'xlsx');
+      a.download = name;
       a.click();
       URL.revokeObjectURL(url);
-    } catch (e) { alert('No se pudo generar la exportación.'); }
+    } catch (e) {
+      A.toast(e.message || 'No se pudo generar la exportación.', 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = prev; }
+    }
   }
 
   // ---- Eventos ----

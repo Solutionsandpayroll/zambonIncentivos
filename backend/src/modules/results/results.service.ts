@@ -3,12 +3,14 @@ import { PrismaService } from '../../shared/database/prisma.service';
 import { ScopeService } from '../../common/scope/scope.service';
 import { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { toResultDetail, toResultListItem } from './results.mapper';
+import { AccrualService } from './accrual.service';
 
 @Injectable()
 export class ResultsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly scope: ScopeService,
+    private readonly accrual: AccrualService,
   ) {}
 
   /**
@@ -63,7 +65,10 @@ export class ResultsService {
     // Alcance: 403 si el empleado de la liquidación está fuera del árbol.
     this.scope.assertCanAccessEmployee(user, header.employeeId);
 
-    return toResultDetail(header);
+    return {
+      ...toResultDetail(header),
+      accrual: await this.accrual.forHeader(header),
+    };
   }
 
   /** Última versión (o una específica) de un empleado en un periodo. */
@@ -99,7 +104,10 @@ export class ResultsService {
     });
     if (!header) throw new NotFoundException('Sin liquidación para ese empleado/periodo');
 
-    return toResultDetail(header);
+    return {
+      ...toResultDetail(header),
+      accrual: await this.accrual.forHeader(header),
+    };
   }
 
   /** Historial de versiones de un empleado en el periodo de una liquidación. */

@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="https://cdn.tailwindcss.com?plugins=container-queries"></script>
 <!-- ===== Zambon OS shared theme (source: /shared/zambon-theme.js) ===== -->
 <script id="tailwind-config">
   tailwind.config = {
@@ -53,7 +53,13 @@
 </script>
 <!-- ===== Zambon OS shared base (source: /shared/zambon-base.html) ===== -->
 <style id="zambon-base">
-  :root { --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); }
+  /* Interfaz oscura y solo oscura. Sin color-scheme el navegador asume el esquema
+     claro y pinta todo control nativo con su fondo blanco y texto gris claro
+     (mas calendario, spinners, scrollbar y caret). Es la raiz del arreglo;
+     .z-input/.cell-input solo pintan encima. */
+  :root { color-scheme: dark; --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); }
+  input, select, textarea { color: #e2e2e2; font-family: inherit; }
+  input::placeholder, textarea::placeholder { color: #92927a; opacity: 1; }
   body { background-color: #121414; color: #e2e2e2; }
   .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
   ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -93,6 +99,15 @@
     -webkit-box-shadow: 0 0 0 1000px #1a1c1c inset;
   }
   .z-input:focus { outline: none; border-bottom-color: #c3cd17; box-shadow: none; }
+  /* Blindaje anti-regresion. El plugin 'forms' de Tailwind pintaba
+     [type='text'|'number'|'date'...] con background-color:#fff, misma
+     especificidad (0,1,0) que .z-input pero inyectado despues por el CDN, asi
+     que ganaba por orden y los campos salian blancos con texto gris. Se quito
+     el plugin; estas reglas (0,2,0) evitan que cualquier CSS externo lo repita. */
+  input.z-input[type], textarea.z-input, select.z-input,
+  input.cell-input[type] { background-color: rgba(26,28,28,0.55); color: #e2e2e2; }
+  input.cell-input[type]:focus { background-color: rgba(195,205,23,0.06); }
+  select.z-input { appearance: none; -webkit-appearance: none; }
   .z-rise { animation: z-rise 300ms var(--ease-out) both; }
   .z-rise-1 { animation-delay: 40ms; } .z-rise-2 { animation-delay: 80ms; } .z-rise-3 { animation-delay: 120ms; }
   @keyframes z-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -290,12 +305,12 @@
 </div>
 
 <!-- Barra de guardado con trazabilidad (auditoría) -->
-<div class="glass-card rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 z-rise z-rise-3">
-<p class="text-label-sm text-on-surface-variant flex items-center gap-1.5">
-<span class="material-symbols-outlined text-[16px]">info</span>
-La curva reemplaza los escalones del periodo/componente. Se registra en auditoría.
+<div class="glass-card rounded-xl p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 z-rise z-rise-3">
+<p class="text-label-sm text-on-surface-variant flex items-start gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-[16px] shrink-0">info</span>
+<span>La curva reemplaza los escalones del periodo/componente. Se registra en auditoría.</span>
 </p>
-<div class="flex gap-3">
+<div class="flex gap-3 shrink-0 self-end lg:self-auto">
 <button id="btn-reload" class="z-btn z-btn--ghost">Descartar</button>
 <button id="btn-save" class="z-btn z-btn--primary glow-lime" disabled><span class="material-symbols-outlined text-[18px]">save</span>Guardar curva</button>
 </div>
@@ -326,10 +341,12 @@ La curva reemplaza los escalones del periodo/componente. Se registra en auditor�
 
   (async function init() {
     try {
-      var periods = await A.get('/periods');
-      periods.filter(function (p) { return !p.isClosed; }).forEach(function (p) {
+      // La curva es parametrización de ciclo. Solo los abiertos: editar la de
+      // un ciclo cerrado no cambiaría nada ya liquidado.
+      var cycles = await A.listPeriods('cycle');
+      cycles.filter(function (p) { return !p.isClosed; }).forEach(function (p) {
         var o = document.createElement('option'); o.value = p.periodId;
-        o.textContent = p.periodYear + '-' + String(p.periodMonth).padStart(2, '0') + (p.periodType === 'CYCLE' ? ' · Ciclo' : '');
+        o.textContent = p.label;
         el('sel-period').appendChild(o);
       });
     } catch (e) {}
@@ -375,13 +392,22 @@ La curva reemplaza los escalones del periodo/componente. Se registra en auditor�
       '<td class="py-1.5 px-2"><input type="number" step="0.000001" min="0" class="cell-input" value="' + (pay != null ? pay : '') + '"/></td>' +
       '<td class="py-1.5 px-2 text-center"><input type="checkbox" ' + (ceiling ? 'checked' : '') + ' class="ceiling-check"/></td>' +
       '<td class="py-1.5 px-2 text-center"><button class="row-del text-on-surface-variant hover:text-error transition-colors"><span class="material-symbols-outlined text-[16px]">close</span></button></td>';
-    body.appendChild(tr);
+    // El <tbody> se resuelve aquí: `body` era una variable local de renderSteps,
+    // así que al llamar addRow desde los botones lanzaba "body is not defined".
+    el('steps-body').appendChild(tr);
     tr.querySelector('.row-del').addEventListener('click', function () { tr.remove(); updateCount(); el('btn-save').disabled = el('steps-body').children.length === 0; });
   }
 
   function updateCount() { el('step-count').textContent = el('steps-body').children.length + ' escalones'; }
 
-  el('btn-add-step').addEventListener('click', function () { if (state.periodId) { addRow(null, null, false); updateCount(); el('btn-save').disabled = false; } });
+  el('btn-add-step').addEventListener('click', function () {
+    // Sin periodo no se puede guardar; se avisa en vez de no hacer nada.
+    if (!state.periodId) { A.toast('Selecciona un periodo primero.', 'error'); return; }
+    el('steps-empty').classList.add('hidden');
+    addRow(null, null, false);
+    updateCount();
+    el('btn-save').disabled = false;
+  });
   el('btn-official').addEventListener('click', function () {
     if (!state.periodId) { A.toast('Selecciona un periodo primero.', 'error'); return; }
     renderSteps(OFFICIAL);

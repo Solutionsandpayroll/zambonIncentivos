@@ -18,9 +18,23 @@
     "import:commissions": "ts-node -r tsconfig-paths/register src/database/seed/import-commissions.ts",
     "create:users": "ts-node -r tsconfig-paths/register src/database/seed/create-users.ts",
     "align:structure": "ts-node -r tsconfig-paths/register src/database/seed/align-structure.ts",
+    "seed:weights:vm-gd": "ts-node -r tsconfig-paths/register src/database/seed/seed-weights-vm-gd.ts",
+    "seed:targets:vm-gd": "ts-node -r tsconfig-paths/register src/database/seed/seed-targets-vm-gd.ts",
+    "seed:sales:vm-gd": "ts-node -r tsconfig-paths/register src/database/seed/seed-sales-vm-gd.ts",
+    "seed:chains-guaranteed": "ts-node -r tsconfig-paths/register src/database/seed/seed-chains-and-guaranteed.ts",
+    "seed:directors": "ts-node -r tsconfig-paths/register src/database/seed/seed-directors.ts",
+    "fix:assignment-dates": "ts-node -r tsconfig-paths/register src/database/seed/fix-assignment-dates.ts",
+    "seed:pablo": "ts-node -r tsconfig-paths/register src/database/seed/seed-pablo-xadago.ts",
+    "seed:hierarchy": "ts-node -r tsconfig-paths/register src/database/seed/seed-hierarchy.ts",
+    "reset:passwords": "ts-node -r tsconfig-paths/register src/database/seed/reset-passwords-to-document.ts",
+    "fix:guaranteed-20": "ts-node -r tsconfig-paths/register src/database/seed/enable-guaranteed-20.ts",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:cov": "jest --coverage"
+    "test:cov": "jest --coverage",
+    "mark:monthly-20": "ts-node -r tsconfig-paths/register src/database/seed/mark-monthly-20-teams.ts",
+    "seed:periods": "ts-node -r tsconfig-paths/register src/database/seed/seed-periods-year.ts",
+    "promote:params": "ts-node -r tsconfig-paths/register src/database/seed/promote-params-to-cycle.ts",
+    "migrate:deploy": "prisma migrate deploy --schema=../prisma/schema.prisma"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.15",
@@ -79,5 +93,8 @@
     "moduleNameMapper": {
       "^src/(.*)$": "<rootDir>/$1"
     }
+  },
+  "engines": {
+    "node": ">=22 <23"
   }
 }

@@ -33,7 +33,10 @@ export class OrganizationService {
    * GERENTE/COORDINADOR solo su árbol; EMPLEADO solo a sí mismo. El filtro se
    * construye en backend (nunca se confía en el frontend).
    */
-  listEmployees(user: AuthenticatedUser, filters: { teamId?: string; zoneId?: string }) {
+  listEmployees(
+    user: AuthenticatedUser,
+    filters: { teamId?: string; zoneId?: string; withoutTeam?: boolean },
+  ) {
     const allowedIds = this.scope.allowedEmployeeIds(user);
 
     return this.prisma.employee.findMany({
@@ -41,11 +44,28 @@ export class OrganizationService {
         active: true,
         ...(allowedIds !== null ? { employeeId: { in: allowedIds } } : {}),
         ...(filters.zoneId ? { zoneId: filters.zoneId } : {}),
-        ...(filters.teamId
-          ? { teamAssignments: { some: { teamId: filters.teamId, active: true } } }
-          : {}),
+        // `withoutTeam` aísla a quien no tiene asignación activa: sin equipo no
+        // hay pesos, así que esa gente nunca entra a la liquidación y conviene
+        // poder verla aparte.
+        ...(filters.withoutTeam
+          ? { teamAssignments: { none: { active: true } } }
+          : filters.teamId
+            ? { teamAssignments: { some: { teamId: filters.teamId, active: true } } }
+            : {}),
       },
-      include: { person: true, zone: true, position: true },
+      include: {
+        person: true,
+        zone: true,
+        position: true,
+        // El equipo viaja en la respuesta para poder mostrarlo y distinguir a
+        // los que no tienen ninguno.
+        teamAssignments: {
+          where: { active: true },
+          orderBy: { validFrom: 'desc' },
+          take: 1,
+          select: { team: { select: { teamId: true, teamName: true } } },
+        },
+      },
       orderBy: { employeeCode: 'asc' },
     });
   }

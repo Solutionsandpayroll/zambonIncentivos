@@ -14,4 +14,17 @@ export class AppRootController {
   root(): void {
     // Redirección declarativa; sin cuerpo.
   }
+
+  /**
+   * Sonda de vida para el hosting (Render la consulta tras cada despliegue).
+   *
+   * A propósito NO toca la base de datos: si Supabase se cae un momento, el
+   * hosting reiniciaría el servicio en bucle en vez de servir las pantallas.
+   * Esto responde "el proceso está arriba", que es lo que la sonda pregunta.
+   */
+  @Public()
+  @Get('health')
+  health(): { status: string; uptime: number } {
+    return { status: 'ok', uptime: Math.round(process.uptime()) };
+  }
 }

@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="https://cdn.tailwindcss.com?plugins=container-queries"></script>
 <!-- ===== Zambon OS shared theme (source: /shared/zambon-theme.js) ===== -->
 <script id="tailwind-config">
   tailwind.config = {
@@ -53,7 +53,13 @@
 </script>
 <!-- ===== Zambon OS shared base (source: /shared/zambon-base.html) ===== -->
 <style id="zambon-base">
-  :root { --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); }
+  /* Interfaz oscura y solo oscura. Sin color-scheme el navegador asume el esquema
+     claro y pinta todo control nativo con su fondo blanco y texto gris claro
+     (mas calendario, spinners, scrollbar y caret). Es la raiz del arreglo;
+     .z-input/.cell-input solo pintan encima. */
+  :root { color-scheme: dark; --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); }
+  input, select, textarea { color: #e2e2e2; font-family: inherit; }
+  input::placeholder, textarea::placeholder { color: #92927a; opacity: 1; }
   body { background-color: #121414; color: #e2e2e2; }
   .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
   ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -92,6 +98,15 @@
     -webkit-box-shadow: 0 0 0 1000px #1a1c1c inset;
   }
   .z-input:focus { outline: none; border-bottom-color: #c3cd17; box-shadow: none; }
+  /* Blindaje anti-regresion. El plugin 'forms' de Tailwind pintaba
+     [type='text'|'number'|'date'...] con background-color:#fff, misma
+     especificidad (0,1,0) que .z-input pero inyectado despues por el CDN, asi
+     que ganaba por orden y los campos salian blancos con texto gris. Se quito
+     el plugin; estas reglas (0,2,0) evitan que cualquier CSS externo lo repita. */
+  input.z-input[type], textarea.z-input, select.z-input,
+  input.cell-input[type] { background-color: rgba(26,28,28,0.55); color: #e2e2e2; }
+  input.cell-input[type]:focus { background-color: rgba(195,205,23,0.06); }
+  select.z-input { appearance: none; -webkit-appearance: none; }
   .z-rise { animation: z-rise 300ms var(--ease-out) both; }
   .z-rise-1 { animation-delay: 40ms; } .z-rise-2 { animation-delay: 80ms; } .z-rise-3 { animation-delay: 120ms; }
   @keyframes z-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -223,6 +238,22 @@
 <select id="sel-team" class="z-input text-sm"><option value="">Selecciona…</option></select>
 </label>
 </div>
+<label class="flex items-center gap-2 mt-4 cursor-pointer w-fit">
+<input id="f-missing" type="checkbox" class="cursor-pointer"/>
+<span class="text-label-sm text-on-surface-variant">Mostrar solo empleados sin cuota</span>
+</label>
+</div>
+
+<!-- Cobertura de cuotas por equipo: responde "quién NO tiene cuota" sin tener
+     que entrar equipo por equipo. -->
+<div class="glass-card rounded-xl p-5 z-rise z-rise-1">
+<div class="flex items-center justify-between mb-3">
+<h4 class="font-label-bold text-label-bold text-on-surface uppercase tracking-wider">Cobertura del periodo</h4>
+<span id="cov-total" class="text-label-sm text-on-surface-variant">—</span>
+</div>
+<div id="cov-body" class="flex flex-col gap-1.5">
+<p class="text-label-sm text-on-surface-variant">— Selecciona un periodo.</p>
+</div>
 </div>
 
 <!-- Tabla de cuotas editable (team_component_target) -->
@@ -251,9 +282,9 @@
 </div>
 
 <!-- Barra de guardado -->
-<div class="glass-card rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 z-rise z-rise-3">
-<p class="text-label-sm text-on-surface-variant flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px]">info</span>Al guardar se hace upsert por (empleado, componente, periodo).</p>
-<div class="flex gap-3">
+<div class="glass-card rounded-xl p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 z-rise z-rise-3">
+<p class="text-label-sm text-on-surface-variant flex items-start gap-1.5 min-w-0"><span class="material-symbols-outlined text-[16px] shrink-0">info</span><span>Al guardar se hace upsert por (empleado, componente, periodo).</span></p>
+<div class="flex gap-3 shrink-0 self-end lg:self-auto">
 <button id="btn-reload" class="z-btn z-btn--ghost">Descartar</button>
 <button id="btn-save" class="z-btn z-btn--primary glow-lime" disabled><span class="material-symbols-outlined text-[18px]">save</span>Guardar cuotas</button>
 </div>
@@ -274,12 +305,8 @@
 
   (async function init() {
     try {
-      var periods = await A.get('/periods');
-      periods.forEach(function (p) {
-        var o = document.createElement('option'); o.value = p.periodId;
-        o.textContent = p.periodYear + '-' + String(p.periodMonth).padStart(2, '0') + (p.periodType === 'CYCLE' ? ' · Ciclo' : '');
-        el('sel-period').appendChild(o);
-      });
+      // Las cuotas se definen por ciclo y los meses las heredan.
+      await A.fillPeriodSelect('sel-period', 'cycle');
     } catch (e) {}
     try {
       var teams = await A.get('/teams');
@@ -291,8 +318,70 @@
     state.components = [];
   })();
 
-  el('sel-period').addEventListener('change', function (e) { state.periodId = e.target.value; refresh(); });
+  el('sel-period').addEventListener('change', function (e) {
+    state.periodId = e.target.value; refresh(); loadCoverage();
+  });
   el('sel-team').addEventListener('change', function (e) { state.teamId = e.target.value; refresh(); });
+  el('f-missing').addEventListener('change', refresh);
+
+  /**
+   * Cobertura por equipo del periodo: cuántos empleados tienen al menos una
+   * cuota. Se calcula en el cliente cruzando /employees con /targets, que ya
+   * vienen completos para el periodo; así se ve de un vistazo dónde falta
+   * cargar sin recorrer equipo por equipo.
+   */
+  async function loadCoverage() {
+    var box = el('cov-body');
+    if (!state.periodId) {
+      box.innerHTML = '<p class="text-label-sm text-on-surface-variant">— Selecciona un periodo.</p>';
+      el('cov-total').textContent = '—';
+      return;
+    }
+    box.innerHTML = '<p class="text-label-sm text-on-surface-variant">Cargando…</p>';
+    try {
+      var teams = await A.get('/teams');
+      var emps = await A.get('/employees');
+      var targets = await A.get('/targets?periodId=' + encodeURIComponent(state.periodId));
+      var withQuota = {};
+      (targets || []).forEach(function (t) { withQuota[t.employeeId] = true; });
+
+      var byTeam = {};
+      var noTeam = { n: 0, ok: 0 };
+      (emps || []).forEach(function (e) {
+        var a = e.teamAssignments && e.teamAssignments[0];
+        var key = a && a.team ? a.team.teamId : null;
+        var bucket = key ? (byTeam[key] = byTeam[key] || { name: a.team.teamName, n: 0, ok: 0 }) : noTeam;
+        bucket.n += 1;
+        if (withQuota[e.employeeId]) bucket.ok += 1;
+      });
+
+      var rows = Object.keys(byTeam).map(function (k) { return byTeam[k]; });
+      rows.sort(function (a, b) { return (a.n - a.ok) === (b.n - b.ok) ? a.name.localeCompare(b.name) : (b.n - b.ok) - (a.n - a.ok); });
+      if (noTeam.n) rows.push({ name: 'Sin equipo', n: noTeam.n, ok: noTeam.ok, orphan: true });
+
+      var totalN = 0, totalOk = 0;
+      rows.forEach(function (r) { totalN += r.n; totalOk += r.ok; });
+      el('cov-total').textContent = totalOk + ' de ' + totalN + ' con cuota';
+
+      box.innerHTML = rows.map(function (r) {
+        var falta = r.n - r.ok;
+        var pct = r.n ? Math.round((r.ok / r.n) * 100) : 0;
+        var color = falta === 0 ? '#c3cd17' : (r.ok === 0 ? '#ffb4ab' : '#dfea3a');
+        return '' +
+          '<div class="flex items-center gap-3">' +
+            '<span class="text-label-sm ' + (r.orphan ? 'text-error' : 'text-on-surface-variant') + ' w-52 shrink-0 truncate">' +
+              A.escapeHtml(r.name) + '</span>' +
+            '<span class="flex-1 h-1.5 rounded-full bg-surface-container-high overflow-hidden">' +
+              '<span style="display:block;height:100%;width:' + pct + '%;background:' + color + '"></span>' +
+            '</span>' +
+            '<span class="num-cell text-label-sm ' + (falta ? 'text-error' : 'text-on-surface-variant') + ' w-28 text-right shrink-0">' +
+              r.ok + '/' + r.n + (falta ? '  faltan ' + falta : '') + '</span>' +
+          '</div>';
+      }).join('');
+    } catch (e) {
+      box.innerHTML = '<p class="text-label-sm text-on-surface-variant">— No se pudo calcular la cobertura.</p>';
+    }
+  }
 
   async function refresh() {
     var body = el('quotas-body'), head = el('tbl-head');
@@ -351,6 +440,21 @@
 
       body.innerHTML = '';
       if (!emps.length) { body.innerHTML = '<tr><td colspan="' + (2 + state.components.length) + '" class="py-6 text-center text-on-surface-variant text-sm">— El equipo no tiene empleados.</td></tr>'; el('btn-save').disabled = true; return; }
+
+      // "Sin cuota" = no tiene valor en NINGUNO de los componentes del equipo.
+      if (el('f-missing').checked) {
+        emps = emps.filter(function (e) {
+          return !state.components.some(function (c) {
+            return qByKey[e.employeeId + '|' + c.componentId] != null;
+          });
+        });
+        if (!emps.length) {
+          body.innerHTML = '<tr><td colspan="' + (2 + state.components.length) + '" class="py-6 text-center text-on-surface-variant text-sm">— Todos los empleados del equipo ya tienen cuota.</td></tr>';
+          el('btn-save').disabled = true;
+          return;
+        }
+      }
+
       emps.forEach(function (e) {
         var p = e.person || {};
         var name = p.fullName || ((p.firstName || '') + ' ' + (p.lastName || '')).trim();

@@ -1,4 +1,6 @@
 import { Decimal } from '@prisma/client/runtime/library';
+import { computeIdealScenario } from '../incentives/domain/ideal-scenario';
+import { theoreticalMultiplierFor } from '../incentives/domain/execution-rules';
 
 /**
  * Mappers de entidad Prisma → forma de respuesta del contrato (API.md §7).
@@ -49,11 +51,15 @@ export function toResultDetail(h: any) {
   return {
     headerId: h.incentiveCalculationHeaderId,
     employee: {
+      // El id viaja para poder pedir el soporte individual
+      // (POST /reports/export con type=EMPLOYEE lo exige).
+      employeeId: h.employeeId,
       documentNumber: h.employee.person.documentNumber,
       fullName: fullNameOf(h.employee.person),
       team: primaryTeamName(h.employee),
     },
     period: {
+      periodId: h.periodId,
       year: h.period.periodYear,
       month: h.period.periodMonth,
       type: h.period.periodType,
@@ -70,6 +76,15 @@ export function toResultDetail(h: any) {
       cycleMultiplier: h.executionCycleMultiplier,
     },
     totalIncentive: num(h.totalIncentive),
+    // Escenario ideal: cuánto sería cumpliendo el 100% del 80% y del 20%.
+    ideal: computeIdealScenario(
+      {
+        component80Theoretical: num(h.component80Theoretical),
+        component20Theoretical: num(h.component20Theoretical),
+        executionCycleMultiplier: theoreticalMultiplierFor(h.executionPayMonthly ?? false),
+      },
+      num(h.totalIncentive),
+    ),
     guaranteedPayApplied: h.guaranteedPayApplied,
     calculationVersion: h.calculationVersion,
     details: (h.details ?? []).map((d: any) => ({

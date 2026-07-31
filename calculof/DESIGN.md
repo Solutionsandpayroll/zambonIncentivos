@@ -109,6 +109,8 @@ spacing:
   margin: 32px
 ---
 
+> **Scope.** This file is the same in the six screen folders (adminf, calculof, home, loginf, reportesf, resultsf) — it is one system, not six. The implementation lives in `shared/zambon-base.html` (classes and tokens), `shared/zambon-sidebar.html` (canonical sidebar) and `shared/api.js` (dialogs, toasts, role permissions). **If this document and the code disagree, the code wins and this file is the one to fix.**
+
 ## Brand & Style
 
 The design system is engineered for a high-performance incentive management environment, blending the precision of corporate finance with the energy of a cutting-edge tech startup. The brand personality is authoritative yet rebellious, designed to evoke a sense of momentum and "earned reward."
@@ -119,9 +121,10 @@ The visual language utilizes a **Modern Glassmorphic** style. It relies on multi
 
 The palette is anchored by the primary **Vibrant Lime (#c3cd17)**, which serves as the "hero" color for call-to-actions, progress indicators, and interactive highlights. 
 
-- **Background Strategy:** The interface uses a deep **Dark Slate (#1a1f24)** as the foundation. Secondary elevation tiers use **Charcoal (#2d343c)** to create subtle separation without relying on heavy borders.
-- **Contrast:** Pure whites are reserved for primary headers and high-priority data points to ensure maximum legibility against the dark backdrop.
-- **Gradients:** Use subtle linear gradients moving from the primary lime to a slightly more yellowish hue for "glowing" interactive states and glassmorphic background accents.
+- **Background Strategy:** The canvas is `surface` **#121414**; elevation tiers climb through `surface-container-low` **#1a1c1c**, `surface-container` **#1e2020** and `surface-container-high` **#282a2b**. Use the tokens above — never a literal hex in a screen.
+- **Contrast:** Body text is `on-surface` **#e2e2e2** and secondary text `on-surface-variant` **#c8c8ae**. Pure white is not used: it glares against a canvas this dark.
+- **Dark only:** `:root` declares `color-scheme: dark`. Without it the browser paints every native control (inputs, date pickers, scrollbars, `<select>` popups) with its light defaults. This is the root of the theme, not a detail — see `shared/zambon-base.html`.
+- **No gradients:** Fills are solid. Lime→cyan or lime→yellow gradients were tried and dropped; they muddy the accent and read as decoration. "Glow" is done with `box-shadow` (`.glow-lime`), not with a gradient.
 
 ## Typography
 
@@ -143,23 +146,45 @@ The layout philosophy follows a **Fluid-Dynamic Grid**. While based on a 12-colu
 
 Depth is conveyed through **Glassmorphism and Tonal Layering** rather than traditional drop shadows.
 
-- **Glass Surface:** Cards use a semi-transparent fill (e.g., `rgba(45, 52, 60, 0.6)`) with a `backdrop-filter: blur(20px)`.
-- **Borders:** "Ghost borders" are essential. Instead of shadows, use 1px solid borders with a very low opacity white or a subtle gradient that catches "light" from the top-left corner.
+- **Glass Surface:** Cards use `rgba(30, 32, 32, 0.6)` — `surface-container` at 60% — with `backdrop-filter: blur(20px)`. Encapsulated as `.glass-card`; do not reimplement it per screen.
+- **Borders:** "Ghost borders" are essential. Instead of shadows, a 1px solid `rgba(255,255,255,0.06)`. Flat, not a gradient border.
 - **Glows:** High-priority elements use a soft, primary-colored outer glow (bloom) to signify activity or success, creating a sense of neon-tech influence.
 
 ## Shapes
 
 The shape language is consistently **Rounded**, striking a balance between organic and technical.
 
-- **Containers:** Dashboard cards and main navigation elements use the `rounded-lg` (1rem) setting.
-- **Interactive Elements:** Buttons and input fields use the standard `rounded` (0.5rem) setting to feel precise.
-- **Accents:** Small decorative elements or progress bar end-caps should use pill-shaping (full rounding) to contrast the more structural card shapes.
+- **Containers:** Cards use `rounded-xl` (1.5rem); the sidebar and topbar are square-edged, anchored to the viewport.
+- **Interactive Elements:** Buttons use `rounded` 1rem; inputs use 0.5rem — and `.z-input` rounds only the top corners (`0.5rem 0.5rem 0 0`) because its border lives on the bottom edge.
+- **Accents:** Pills, progress bars and their fills are fully rounded (`9999px`).
 
 ## Components
 
-- **Buttons:** Primary buttons are solid lime (#c3cd17) with black text. Secondary buttons are ghost-style with a 1px lime border and white text. Use a "squeeze" animation on click for a tactile feel.
-- **Cards:** Must feature the glassmorphic blur and a subtle 1px border. Background should be slightly lighter than the main canvas.
-- **Input Fields:** Dark slate background with a bottom-only border that glows lime when focused.
-- **Incentive Progress Bars:** Thick, 12px height bars with a gradient fill (Lime to Cyan-Green) and a subtle pulse animation for "active" incentives.
-- **Icons:** Thin-stroke (1.5pt) vector icons. Use "Duotone" style where one element of the icon is the primary lime and the rest is white/grey.
-- **Custom Component - "The Pulse":** A large, dynamic visualization area for real-time incentive tracking that uses organic, flowing gradients and high-density typography for "big numbers."
+Every component below lives in `shared/zambon-base.html`. Copy the class, don't restyle it in the screen.
+
+- **Buttons (`.z-btn`):** `--primary` solid lime #c3cd17 on `on-primary` #303300; `--secondary` ghost with a 1px lime border; `--ghost` a white 5% fill. All three squeeze on click (`scale(0.97)`, 160ms).
+- **Cards (`.glass-card`):** blur + ghost border. Nested cards are not used — a card inside a card reads as noise.
+- **Input Fields (`.z-input`):** dark fill, bottom-only 2px border that turns lime on focus. `<select>` uses the same class, plus explicit rules for its `<option>`s so the native Windows popup doesn't paint them light.
+- **Editable table cells (`.cell-input`):** for quota/weight/curve grids. The background is set explicitly, never `transparent`: browsers keep their white fill on `<input type="number">` otherwise. An empty cell shows a reddish border — a missing value is not a zero.
+- **Progress bars (`.z-progress`):** 8px tall, solid `#c3cd17` fill, no gradient. They animate in with a 600ms `scaleX` and hold still afterwards: the dashboard is read many times a day, and a permanent pulse would be noise.
+- **Pills (`.z-pill`):** `--active` lime, `--muted` grey, `--error` reddish for states and counters.
+- **Icons:** Material Symbols Outlined at `wght 300`, single-colour. The active nav item fills its icon (`FILL 1`) instead of recolouring it.
+- **Own dialogs:** `A.confirmAction()` and `A.promptForm()` from `shared/api.js`, never the browser's `alert`/`confirm`, which break the dark theme.
+
+> **Not built:** earlier drafts described a component called *"The Pulse"* — a large real-time visualization with flowing gradients. It was never implemented and it contradicts the no-gradient rule above. It is listed here only so it isn't reintroduced from an old draft.
+
+## Navigation
+
+The sidebar is copied verbatim from `shared/zambon-sidebar.html`. Labels are in **Spanish** (`docs/diseno/diseno-frontend.md` §4), with a fixed icon per destination:
+
+| Section | Icon | Target |
+|---|---|---|
+| Inicio | `dashboard` | `../home/code.html` |
+| Cálculo | `calculate` | `../calculof/code.html` |
+| Resultados | `analytics` | `../resultsf/code.html` |
+| Reportes | `description` | `../reportesf/code.html` |
+| Admin | `admin_panel_settings` | `../adminf/code.html` |
+
+- **Active item:** add `z-nav-item--active` and `aria-current="page"`, and set the icon to `FILL 1`.
+- **Profile:** the name and role are **never** written by hand. `ZambonAPI.fillSidebar()` fills the `data-user-name` and `data-user-role` attributes from the session (`GET /auth/me`); the `—` in the HTML is just the placeholder shown while it loads. A hardcoded name is a fake value on screen.
+- **Permissions:** `requireAuth()` removes the sections the role cannot see, so screens never condition the menu themselves.

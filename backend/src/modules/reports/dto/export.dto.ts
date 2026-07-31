@@ -1,5 +1,7 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayNotEmpty,
+  IsArray,
   IsEnum,
   IsObject,
   IsOptional,
@@ -19,8 +21,21 @@ export enum ExportFormat {
 }
 
 export class ExportFiltersDto {
+  // Opcional: basta con `periodIds` cuando se exportan varios periodos.
+  @IsOptional()
   @IsUUID()
-  periodId!: string;
+  periodId?: string;
+
+  /**
+   * Varios periodos en un mismo archivo. Prevalece sobre `periodId`; el
+   * consolidado suma todos y el detalle trae una columna de periodo para no
+   * mezclar liquidaciones de meses distintos sin poder distinguirlas.
+   */
+  @IsOptional()
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsUUID(undefined, { each: true })
+  periodIds?: string[];
 
   @IsOptional()
   @IsUUID()

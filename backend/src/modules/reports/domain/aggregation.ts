@@ -60,20 +60,25 @@ export function consolidate(rows: CalculationRow[]): ConsolidatedTotals {
   let total80 = ZERO;
   let total20 = ZERO;
   let totalIncentive = ZERO;
-  let guaranteedCount = 0;
+  // Personas, no filas: una exportación multi-periodo trae una fila por
+  // empleado y periodo, así que contar filas infla el número tantas veces como
+  // periodos abarque el reporte.
+  const employees = new Set<string>();
+  const guaranteed = new Set<string>();
 
   for (const row of latest) {
     total80 = total80.add(row.component80Result);
     total20 = total20.add(row.component20Result);
     totalIncentive = totalIncentive.add(row.totalIncentive);
-    if (row.guaranteedPayApplied) guaranteedCount++;
+    employees.add(row.employeeId);
+    if (row.guaranteedPayApplied) guaranteed.add(row.employeeId);
   }
 
   return {
-    employeeCount: latest.length,
+    employeeCount: employees.size,
     total80: total80.toDecimalPlaces(2),
     total20: total20.toDecimalPlaces(2),
     totalIncentive: totalIncentive.toDecimalPlaces(2),
-    guaranteedCount,
+    guaranteedCount: guaranteed.size,
   };
 }

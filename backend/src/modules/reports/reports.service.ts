@@ -70,6 +70,7 @@ export class ReportsService {
     user: AuthenticatedUser,
     filters: {
       periodId: string;
+      periodIds?: string[];
       teamId?: string;
       zoneId?: string;
       componentId?: string;
@@ -80,7 +81,24 @@ export class ReportsService {
 
   /** Exportación a archivo (XLSX funcional; PDF pendiente). */
   async export(user: AuthenticatedUser, dto: ExportReportDto): Promise<ExportResult> {
-    const { periodId, teamId, employeeId } = dto.filters;
+    const { periodId, periodIds, teamId, employeeId } = dto.filters;
+
+    const multi = (periodIds ?? []).length > 0;
+    if (!multi && !periodId) {
+      throw new BadRequestException(
+        'La exportación requiere periodId o periodIds',
+      );
+    }
+    // Con varios periodos, `periodId` deja de mandar; se conserva el primero
+    // solo para las rutas que aún piden un periodo único (TEAM).
+    const singlePeriodId = periodId ?? periodIds![0];
+
+    // Etiqueta legible del alcance temporal, para el título y el nombre del
+    // archivo: exportar 3 meses y que el archivo se llame igual que uno de un
+    // solo mes es la forma más fácil de confundir dos reportes distintos.
+    const periodLabel = await this.periodLabel(
+      multi ? periodIds! : [singlePeriodId],
+    );
 
     let title: string;
     let report: ConsolidatedReport;
@@ -90,22 +108,36 @@ export class ReportsService {
         if (!employeeId) {
           throw new BadRequestException('El reporte EMPLOYEE requiere employeeId');
         }
-        report = await this.buildConsolidated(user, { periodId, employeeId });
-        title = 'Reporte individual de incentivos';
+        report = await this.buildConsolidated(user, {
+          periodId: singlePeriodId,
+          ...(multi ? { periodIds } : {}),
+          employeeId,
+        });
+        title = `Reporte individual de incentivos · ${periodLabel}`;
         break;
       }
       case ReportType.TEAM: {
         if (!teamId) {
           throw new BadRequestException('El reporte TEAM requiere teamId');
         }
-        report = await this.teamReport(user, teamId, periodId);
-        title = 'Consolidado por equipo';
+        report = multi
+          ? await this.buildConsolidated(user, {
+              periodId: singlePeriodId,
+              periodIds,
+              teamId,
+            })
+          : await this.teamReport(user, teamId, singlePeriodId);
+        title = `Consolidado por equipo · ${periodLabel}`;
         break;
       }
       case ReportType.CONSOLIDATED:
       default: {
-        report = await this.consolidatedReport(user, { periodId, teamId });
-        title = 'Consolidado por periodo';
+        report = await this.consolidatedReport(user, {
+          periodId: singlePeriodId,
+          ...(multi ? { periodIds } : {}),
+          teamId,
+        });
+        title = `Consolidado por periodo · ${periodLabel}`;
         break;
       }
     }
@@ -126,6 +158,33 @@ export class ReportsService {
   }
 
   /**
+   * Etiqueta del alcance temporal: '2026-01' para uno solo, '2026-01 a 2026-03'
+   * para un rango contiguo, y la lista separada por comas si hay saltos —
+   * decir "a" sobre periodos no contiguos afirmaría que incluye meses que no
+   * están en el archivo.
+   */
+  private async periodLabel(ids: string[]): Promise<string> {
+    const periods = await this.repo.findPeriodsByIds(ids);
+    if (periods.length === 0) return 'sin periodo';
+
+    const labels = periods
+      .map((p) => ({
+        key: p.periodYear * 12 + p.periodMonth,
+        text: `${p.periodYear}-${String(p.periodMonth).padStart(2, '0')}`,
+      }))
+      .sort((a, b) => a.key - b.key);
+
+    if (labels.length === 1) return labels[0].text;
+
+    const contiguous = labels.every(
+      (l, i) => i === 0 || l.key === labels[i - 1].key + 1,
+    );
+    return contiguous
+      ? `${labels[0].text} a ${labels[labels.length - 1].text}`
+      : labels.map((l) => l.text).join(', ');
+  }
+
+  /**
    * Núcleo compartido: carga liquidaciones con alcance, conserva la versión
    * vigente por empleado (dominio puro) y arma filas + totales.
    */
@@ -133,6 +192,7 @@ export class ReportsService {
     user: AuthenticatedUser,
     filters: {
       periodId: string;
+      periodIds?: string[];
       teamId?: string;
       employeeId?: string;
       zoneId?: string;
@@ -170,13 +230,20 @@ export class ReportsService {
       .map(toReportRow);
 
     const t = consolidate(calcRows);
+    // El ideal se suma desde las filas ya mapeadas: cada una lo trae calculado
+    // desde sus bolsas teóricas, así que no hace falta reagregarlo aparte.
+    const totalIdeal = rows.reduce((a, r) => a + r.idealTotal, 0);
+    const totalIncentive = t.totalIncentive.toNumber();
+
     return {
       rows,
       totals: {
         employeeCount: t.employeeCount,
         total80: t.total80.toNumber(),
         total20: t.total20.toNumber(),
-        totalIncentive: t.totalIncentive.toNumber(),
+        totalIncentive,
+        totalIdeal: Math.round(totalIdeal * 100) / 100,
+        achievementPercent: totalIdeal > 0 ? totalIncentive / totalIdeal : null,
         guaranteedCount: t.guaranteedCount,
       },
     };

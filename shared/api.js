@@ -139,6 +139,7 @@
     // no en fillSidebar() porque solo una de las cinco pantallas la invoca.
     onReady(function () {
       applyNavPermissions();
+      applyRoleVisibility();
       mountLogoutButton();
       removeDeadTopbarIcons();
     });
@@ -243,37 +244,45 @@
       'justify-content:center;padding:1rem;background:rgba(15,23,42,.75);' +
       'backdrop-filter:blur(2px)';
 
+    // Este diálogo se inyecta desde JS, así que no hereda las clases de la
+    // hoja compartida: los colores van en línea, tomados del mismo tema oscuro
+    // (surface-container #1e2020, on-surface #e2e2e2, primary #c3cd17).
+    // `color-scheme:dark` en el contenedor evita que el navegador pinte los
+    // <input type="password"> con su fondo blanco por defecto.
+    var pwdField =
+      'width:100%;padding:.6rem .75rem;border:1px solid rgba(255,255,255,.1);' +
+      'border-radius:8px;background:rgba(26,28,28,.55);color:#e2e2e2;' +
+      'font-family:inherit;font-size:.9rem';
+
     overlay.innerHTML = [
-      '<div style="background:#fff;border-radius:14px;max-width:26rem;width:100%;',
-      'padding:1.75rem;box-shadow:0 20px 45px rgba(15,23,42,.28)">',
+      '<div style="color-scheme:dark;background:#1e2020;border-radius:14px;max-width:26rem;',
+      'width:100%;padding:1.75rem;border:1px solid rgba(255,255,255,.06);',
+      'box-shadow:0 20px 45px rgba(0,0,0,.5)">',
       '<h2 id="zambon-pwd-title" style="margin:0 0 .5rem;font-size:1.15rem;',
-      'font-weight:650;color:#0f172a">Cambia tu contraseña</h2>',
-      '<p style="margin:0 0 1.25rem;font-size:.875rem;line-height:1.5;color:#475569">',
+      'font-weight:650;color:#e2e2e2">Cambia tu contraseña</h2>',
+      '<p style="margin:0 0 1.25rem;font-size:.875rem;line-height:1.5;color:#c8c8ae">',
       'Tu contraseña actual fue asignada por un administrador. Para proteger tu ',
       'cuenta, define una nueva antes de continuar.</p>',
       '<form id="zambon-pwd-form" novalidate>',
-      '<label style="display:block;font-size:.8rem;font-weight:600;color:#334155;',
+      '<label style="display:block;font-size:.8rem;font-weight:600;color:#c8c8ae;',
       'margin-bottom:.3rem">Contraseña actual</label>',
       '<input id="zambon-pwd-current" type="password" autocomplete="current-password" ',
-      'style="width:100%;padding:.6rem .75rem;border:1px solid #cbd5e1;border-radius:8px;',
-      'font-size:.9rem;margin-bottom:.9rem" required>',
-      '<label style="display:block;font-size:.8rem;font-weight:600;color:#334155;',
+      'style="' + pwdField + ';margin-bottom:.9rem" required>',
+      '<label style="display:block;font-size:.8rem;font-weight:600;color:#c8c8ae;',
       'margin-bottom:.3rem">Nueva contraseña</label>',
       '<input id="zambon-pwd-new" type="password" autocomplete="new-password" ',
-      'style="width:100%;padding:.6rem .75rem;border:1px solid #cbd5e1;border-radius:8px;',
-      'font-size:.9rem;margin-bottom:.9rem" required>',
-      '<label style="display:block;font-size:.8rem;font-weight:600;color:#334155;',
+      'style="' + pwdField + ';margin-bottom:.9rem" required>',
+      '<label style="display:block;font-size:.8rem;font-weight:600;color:#c8c8ae;',
       'margin-bottom:.3rem">Repite la nueva contraseña</label>',
       '<input id="zambon-pwd-repeat" type="password" autocomplete="new-password" ',
-      'style="width:100%;padding:.6rem .75rem;border:1px solid #cbd5e1;border-radius:8px;',
-      'font-size:.9rem" required>',
+      'style="' + pwdField + '" required>',
       '<p id="zambon-pwd-error" role="alert" style="display:none;margin:.75rem 0 0;',
-      'font-size:.8rem;color:#b91c1c"></p>',
+      'font-size:.8rem;color:#ffb4ab"></p>',
       '<button id="zambon-pwd-submit" type="submit" style="width:100%;margin-top:1.25rem;',
-      'padding:.7rem;border:0;border-radius:8px;background:#0f172a;color:#fff;',
+      'padding:.7rem;border:0;border-radius:8px;background:#c3cd17;color:#303300;',
       'font-size:.9rem;font-weight:600;cursor:pointer">Guardar y continuar</button>',
       '<button id="zambon-pwd-logout" type="button" style="width:100%;margin-top:.5rem;',
-      'padding:.55rem;border:0;border-radius:8px;background:transparent;color:#64748b;',
+      'padding:.55rem;border:0;border-radius:8px;background:transparent;color:#92927a;',
       'font-size:.8rem;cursor:pointer">Cerrar sesión</button>',
       '</form></div>',
     ].join('');
@@ -361,6 +370,47 @@
   function homePathForRole(roles) {
     // Empleado ve poco: entra a su resumen. El resto entra al home general.
     return '/home/code.html';
+  }
+
+  /** ¿El usuario tiene alguno de estos roles? */
+  function hasRole() {
+    const user = getUser();
+    const mine = (user && user.roles) || [];
+    const wanted = Array.prototype.slice.call(arguments);
+    return wanted.some((r) => mine.indexOf(r) !== -1);
+  }
+
+  /**
+   * Personal de la operación (ADMIN/NÓMINA): ve el tablero completo, carga
+   * ventas y ejecuta cálculos. El resto de roles solo consulta lo suyo.
+   */
+  function isStaff() {
+    return hasRole('ADMIN', 'NOMINA');
+  }
+
+  /**
+   * Ve a más de una persona (jefes y staff). Un EMPLEADO solo se ve a sí mismo,
+   * así que los filtros por equipo no le aportan nada.
+   */
+  function seesOthers() {
+    return hasRole('ADMIN', 'NOMINA', 'GERENTE', 'COORDINADOR');
+  }
+
+  /**
+   * Oculta los nodos marcados con `data-role` que no correspondan al usuario.
+   * Uso en el markup: data-role="staff" | "sees-others" | "employee-only".
+   * Se retiran del DOM (no se ocultan por CSS) para que no queden accesibles.
+   */
+  function applyRoleVisibility(root) {
+    const scope = root || document;
+    scope.querySelectorAll('[data-role]').forEach((node) => {
+      const need = node.getAttribute('data-role');
+      let ok = true;
+      if (need === 'staff') ok = isStaff();
+      else if (need === 'sees-others') ok = seesOthers();
+      else if (need === 'employee-only') ok = !isStaff();
+      if (!ok) node.remove();
+    });
   }
 
   // ---- Helpers de presentación (consistentes en todo el FE) ---------------
@@ -777,6 +827,68 @@
     });
   }
 
+  // ---- Periodos: meses y ciclos -------------------------------------------
+  // Un ciclo agrupa 4 meses y guarda como `periodMonth` su ÚLTIMO mes (Ciclo1
+  // → 4). Etiquetarlo con ese número lo haría leerse como "abril", así que la
+  // regla de etiquetado vive aquí y no repartida por once pantallas.
+
+  const MONTH_NAMES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun',
+                       'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+  function periodLabel(p) {
+    if (p.periodType !== 'CYCLE' || !p.cycleNumber) {
+      return p.periodYear + '-' + String(p.periodMonth).padStart(2, '0');
+    }
+    const first = (p.cycleNumber - 1) * 4;
+    return p.periodYear + ' · Ciclo ' + p.cycleNumber +
+           ' (' + MONTH_NAMES[first] + '–' + MONTH_NAMES[first + 3] + ')';
+  }
+
+  /**
+   * Periodos ordenados y etiquetados. `kind` filtra por tipo:
+   *   'month' → cálculo, novedades, garantizado, ventas (lo que liquida)
+   *   'cycle' → pesos, curva, cuotas (lo que se parametriza por ciclo)
+   *   'all'   → reportes y resultados, que sí miran ambos
+   */
+  async function listPeriods(kind) {
+    const rows = await request('GET', '/periods');
+    const wanted = kind === 'cycle' ? 'CYCLE' : kind === 'month' ? 'MONTH' : null;
+    return rows
+      .filter((p) => !wanted || p.periodType === wanted)
+      .sort((a, b) =>
+        b.periodYear - a.periodYear ||
+        a.periodType.localeCompare(b.periodType) ||
+        b.periodMonth - a.periodMonth)
+      .map((p) => Object.assign({}, p, { label: periodLabel(p) }));
+  }
+
+  /** Llena un <select> con los periodos del tipo pedido. Devuelve las filas. */
+  async function fillPeriodSelect(selectOrId, kind, opts) {
+    const sel = typeof selectOrId === 'string'
+      ? document.getElementById(selectOrId)
+      : selectOrId;
+    if (!sel) return [];
+
+    const rows = await listPeriods(kind);
+    const options = opts || {};
+    sel.innerHTML = '';
+    if (options.placeholder) {
+      const o = document.createElement('option');
+      o.value = '';
+      o.textContent = options.placeholder;
+      sel.appendChild(o);
+    }
+    rows.forEach(function (p) {
+      const o = document.createElement('option');
+      o.value = p.periodId;
+      o.textContent = p.label;
+      sel.appendChild(o);
+    });
+    // Sin marcador, el primero queda seleccionado: es el periodo más reciente.
+    if (!options.placeholder && rows.length) sel.value = rows[0].periodId;
+    return rows;
+  }
+
   // ---- API pública --------------------------------------------------------
   global.ZambonAPI = {
     get: (path, opts) => request('GET', path, null, opts),
@@ -793,6 +905,10 @@
     getToken,
     clearSession,
     homePathForRole,
+    hasRole,
+    isStaff,
+    seesOthers,
+    applyRoleVisibility,
 
     // helpers de formato
     orDash,
@@ -802,6 +918,11 @@
     escapeHtml,
     DASH,
     ApiError,
+
+    // periodos
+    listPeriods,
+    fillPeriodSelect,
+    periodLabel,
 
     // helpers de UI
     fillSidebar,

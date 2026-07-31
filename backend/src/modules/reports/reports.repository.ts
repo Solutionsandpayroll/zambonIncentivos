@@ -17,8 +17,18 @@ export class ReportsRepository {
    * conjunto de empleados permitidos (alcance). Trae TODAS las versiones; la
    * capa de dominio se queda con la vigente.
    */
+  /** Periodos de un conjunto de ids, para rotular el alcance de la exportación. */
+  findPeriodsByIds(periodIds: string[]) {
+    return this.prisma.period.findMany({
+      where: { periodId: { in: periodIds } },
+      select: { periodId: true, periodYear: true, periodMonth: true },
+    });
+  }
+
   findHeaders(filters: {
     periodId?: string;
+    /** Varios periodos a la vez; tiene prioridad sobre `periodId`. */
+    periodIds?: string[];
     teamId?: string;
     employeeId?: string;
     zoneId?: string;
@@ -27,7 +37,11 @@ export class ReportsRepository {
   }) {
     return this.prisma.incentiveCalculationHeader.findMany({
       where: {
-        ...(filters.periodId ? { periodId: filters.periodId } : {}),
+        ...(filters.periodIds && filters.periodIds.length > 0
+          ? { periodId: { in: filters.periodIds } }
+          : filters.periodId
+            ? { periodId: filters.periodId }
+            : {}),
         ...(filters.teamId ? { teamId: filters.teamId } : {}),
         ...(filters.employeeId ? { employeeId: filters.employeeId } : {}),
         ...(filters.allowedEmployeeIds !== null

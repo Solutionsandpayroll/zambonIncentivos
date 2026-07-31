@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { CatalogsService } from './catalogs.service';
 import { CreatePeriodDto } from './dto/create-period.dto';
+import { SeedYearDto } from './dto/seed-year.dto';
 import { CreateComponentDto } from './dto/create-component.dto';
 import { SetComponentWeightsDto } from './dto/component-weights.dto';
 import { SetCurvePayDto } from './dto/curve-pay.dto';
@@ -33,6 +34,16 @@ export class CatalogsController {
   @Roles(AppRole.ADMIN)
   createPeriod(@Body() dto: CreatePeriodDto) {
     return this.catalogs.createPeriod(dto);
+  }
+
+  /**
+   * Crea el año completo (3 ciclos + 12 meses enlazados). Idempotente: se puede
+   * correr sobre un año que ya tenga periodos sueltos y solo añade lo que falta.
+   */
+  @Post('periods/seed-year')
+  @Roles(AppRole.ADMIN)
+  seedYear(@Body() dto: SeedYearDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.catalogs.seedYear(dto.periodYear, user);
   }
 
   @Patch('periods/:id/close')
@@ -60,8 +71,8 @@ export class CatalogsController {
   @Get('component-weights')
   @Roles(AppRole.ADMIN, AppRole.NOMINA)
   getWeights(
-    @Query('teamId') teamId: string,
     @Query('periodId') periodId: string,
+    @Query('teamId') teamId?: string,
   ) {
     return this.catalogs.getComponentWeights(teamId, periodId);
   }

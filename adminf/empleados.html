@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="https://cdn.tailwindcss.com?plugins=container-queries"></script>
 <!-- ===== Zambon OS shared theme (source: /shared/zambon-theme.js) ===== -->
 <script id="tailwind-config">
   tailwind.config = {
@@ -53,7 +53,13 @@
 </script>
 <!-- ===== Zambon OS shared base (source: /shared/zambon-base.html) ===== -->
 <style id="zambon-base">
-  :root { --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); }
+  /* Interfaz oscura y solo oscura. Sin color-scheme el navegador asume el esquema
+     claro y pinta todo control nativo con su fondo blanco y texto gris claro
+     (mas calendario, spinners, scrollbar y caret). Es la raiz del arreglo;
+     .z-input/.cell-input solo pintan encima. */
+  :root { color-scheme: dark; --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); }
+  input, select, textarea { color: #e2e2e2; font-family: inherit; }
+  input::placeholder, textarea::placeholder { color: #92927a; opacity: 1; }
   body { background-color: #121414; color: #e2e2e2; }
   .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
   ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -93,6 +99,15 @@
     -webkit-box-shadow: 0 0 0 1000px #1a1c1c inset;
   }
   .z-input:focus { outline: none; border-bottom-color: #c3cd17; box-shadow: none; }
+  /* Blindaje anti-regresion. El plugin 'forms' de Tailwind pintaba
+     [type='text'|'number'|'date'...] con background-color:#fff, misma
+     especificidad (0,1,0) que .z-input pero inyectado despues por el CDN, asi
+     que ganaba por orden y los campos salian blancos con texto gris. Se quito
+     el plugin; estas reglas (0,2,0) evitan que cualquier CSS externo lo repita. */
+  input.z-input[type], textarea.z-input, select.z-input,
+  input.cell-input[type] { background-color: rgba(26,28,28,0.55); color: #e2e2e2; }
+  input.cell-input[type]:focus { background-color: rgba(195,205,23,0.06); }
+  select.z-input { appearance: none; -webkit-appearance: none; }
   .z-rise { animation: z-rise 300ms var(--ease-out) both; }
   .z-rise-1 { animation-delay: 40ms; } .z-rise-2 { animation-delay: 80ms; } .z-rise-3 { animation-delay: 120ms; }
   @keyframes z-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -206,6 +221,7 @@
 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
 <input id="f-search" class="z-input pl-10 text-sm" placeholder="Buscar por cédula o nombre..." type="text"/>
 </div>
+<select id="f-team" class="z-input !w-auto min-w-[190px] text-sm"><option value="">Todos los equipos</option><option value="__none__">— Sin equipo —</option></select>
 <select id="f-zone" class="z-input !w-auto min-w-[150px] text-sm"><option value="">Todas las zonas</option></select>
 </div>
 
@@ -218,6 +234,7 @@
 <th class="font-label-bold py-2.5 px-2">Cédula</th>
 <th class="font-label-bold py-2.5 px-2">Nombre</th>
 <th class="font-label-bold py-2.5 px-2">Cargo</th>
+<th class="font-label-bold py-2.5 px-2">Equipo</th>
 <th class="font-label-bold py-2.5 px-2">Zona</th>
 <th class="font-label-bold py-2.5 px-2 text-right">Salario base</th>
 <th class="font-label-bold py-2.5 px-2">Estado</th>
@@ -285,22 +302,42 @@
       var positions = await A.get('/positions');
       positions.forEach(function (p) { var o = document.createElement('option'); o.value = p.positionId; o.textContent = p.positionName; el('m-position').appendChild(o); });
     } catch (e) {}
-    try { el('sum-teams').textContent = (await A.get('/teams')).length; } catch (e) {}
+    try {
+      var teams = await A.get('/teams');
+      el('sum-teams').textContent = teams.length;
+      teams.forEach(function (t) {
+        var o = document.createElement('option');
+        o.value = t.teamId; o.textContent = t.teamName;
+        el('f-team').appendChild(o);
+      });
+    } catch (e) {}
     load();
   })();
 
   async function load() {
     var body = el('emp-body');
-    body.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-on-surface-variant text-sm">Cargando…</td></tr>';
-    var q = el('f-zone').value ? '?zoneId=' + encodeURIComponent(el('f-zone').value) : '';
+    body.innerHTML = '<tr><td colspan="8" class="py-6 text-center text-on-surface-variant text-sm">Cargando…</td></tr>';
+    // El filtro por equipo lo resuelve el backend: '__none__' pide justamente a
+    // los que no tienen ninguna asignación activa.
+    var params = [];
+    if (el('f-zone').value) params.push('zoneId=' + encodeURIComponent(el('f-zone').value));
+    if (el('f-team').value === '__none__') params.push('withoutTeam=true');
+    else if (el('f-team').value) params.push('teamId=' + encodeURIComponent(el('f-team').value));
+    var q = params.length ? '?' + params.join('&') : '';
     try {
       all = await A.get('/employees' + q);
       el('sum-total').textContent = all.length;
       el('sum-salary').textContent = all.filter(function (e) { return Number(e.baseSalary) > 0; }).length;
       render();
     } catch (e) {
-      body.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-on-surface-variant text-sm">— No se pudieron cargar los empleados.</td></tr>';
+      body.innerHTML = '<tr><td colspan="8" class="py-6 text-center text-on-surface-variant text-sm">— No se pudieron cargar los empleados.</td></tr>';
     }
+  }
+
+  /** Nombre del equipo vigente, o null si no tiene ninguno. */
+  function teamOf(e) {
+    var a = e.teamAssignments && e.teamAssignments[0];
+    return a && a.team ? a.team.teamName : null;
   }
 
   function render() {
@@ -313,7 +350,7 @@
     var body = el('emp-body');
     body.innerHTML = '';
     el('emp-count').textContent = items.length + ' empleado' + (items.length === 1 ? '' : 's');
-    if (!items.length) { body.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-on-surface-variant text-sm">— Sin empleados para este filtro.</td></tr>'; return; }
+    if (!items.length) { body.innerHTML = '<tr><td colspan="8" class="py-8 text-center text-on-surface-variant text-sm">— Sin empleados para este filtro.</td></tr>'; return; }
     items.forEach(function (e) {
       var p = e.person || {};
       var name = p.fullName || ((p.firstName || '') + ' ' + (p.lastName || '')).trim();
@@ -325,6 +362,10 @@
         '<td class="py-3 px-2 num-cell text-on-surface-variant">' + A.escapeHtml(A.orDash(p.documentNumber)) + '</td>' +
         '<td class="py-3 px-2 text-on-surface">' + A.escapeHtml(A.orDash(name)) + '</td>' +
         '<td class="py-3 px-2 text-on-surface-variant">' + A.escapeHtml(e.position ? e.position.positionName : '—') + '</td>' +
+        // Sin equipo no hay pesos, así que el empleado nunca liquida: se marca
+        // en rojo en vez de con el guion neutro de "dato ausente".
+        '<td class="py-3 px-2 ' + (teamOf(e) ? 'text-on-surface-variant' : 'text-error') + '">' +
+          (teamOf(e) ? A.escapeHtml(teamOf(e)) : 'Sin equipo') + '</td>' +
         '<td class="py-3 px-2 text-on-surface-variant">' + A.escapeHtml(e.zone ? e.zone.zoneName : '—') + '</td>' +
         '<td class="py-3 px-2 text-right num-cell text-on-surface">' + salary + '</td>' +
         '<td class="py-3 px-2">' + estado + '</td>' +
@@ -388,6 +429,7 @@
 
   el('f-search').addEventListener('input', render);
   el('f-zone').addEventListener('change', load);
+  el('f-team').addEventListener('change', load);
 
   // Modal
   function open() { el('modal').classList.remove('hidden'); el('modal').classList.add('flex'); }

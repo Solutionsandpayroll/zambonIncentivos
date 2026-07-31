@@ -46,9 +46,14 @@ export class ReportsController {
     @Query('teamId') teamId?: string,
     @Query('zoneId') zoneId?: string,
     @Query('componentId') componentId?: string,
+    // Varios periodos separados por coma: 'a,b,c'. Prevalece sobre periodId.
+    @Query('periodIds') periodIds?: string,
   ) {
     return this.reports.consolidatedReport(user, {
       periodId,
+      periodIds: periodIds
+        ? periodIds.split(',').map((s) => s.trim()).filter(Boolean)
+        : undefined,
       teamId,
       zoneId,
       componentId,

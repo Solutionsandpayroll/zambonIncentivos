@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="https://cdn.tailwindcss.com?plugins=container-queries"></script>
 <!-- ===== Zambon OS shared theme (source: /shared/zambon-theme.js) ===== -->
 <script id="tailwind-config">
   tailwind.config = {
@@ -53,7 +53,13 @@
 </script>
 <!-- ===== Zambon OS shared base (source: /shared/zambon-base.html) ===== -->
 <style id="zambon-base">
-  :root { --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); }
+  /* Interfaz oscura y solo oscura. Sin color-scheme el navegador asume el esquema
+     claro y pinta todo control nativo con su fondo blanco y texto gris claro
+     (mas calendario, spinners, scrollbar y caret). Es la raiz del arreglo;
+     .z-input/.cell-input solo pintan encima. */
+  :root { color-scheme: dark; --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); }
+  input, select, textarea { color: #e2e2e2; font-family: inherit; }
+  input::placeholder, textarea::placeholder { color: #92927a; opacity: 1; }
   body { background-color: #121414; color: #e2e2e2; }
   .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
   ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -92,6 +98,15 @@
     -webkit-box-shadow: 0 0 0 1000px #1a1c1c inset;
   }
   .z-input:focus { outline: none; border-bottom-color: #c3cd17; box-shadow: none; }
+  /* Blindaje anti-regresion. El plugin 'forms' de Tailwind pintaba
+     [type='text'|'number'|'date'...] con background-color:#fff, misma
+     especificidad (0,1,0) que .z-input pero inyectado despues por el CDN, asi
+     que ganaba por orden y los campos salian blancos con texto gris. Se quito
+     el plugin; estas reglas (0,2,0) evitan que cualquier CSS externo lo repita. */
+  input.z-input[type], textarea.z-input, select.z-input,
+  input.cell-input[type] { background-color: rgba(26,28,28,0.55); color: #e2e2e2; }
+  input.cell-input[type]:focus { background-color: rgba(195,205,23,0.06); }
+  select.z-input { appearance: none; -webkit-appearance: none; }
   .z-rise { animation: z-rise 300ms var(--ease-out) both; }
   .z-rise-1 { animation-delay: 40ms; } .z-rise-2 { animation-delay: 80ms; } .z-rise-3 { animation-delay: 120ms; }
   @keyframes z-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -234,8 +249,19 @@
 <button id="m-close" class="p-1 text-on-surface-variant hover:text-on-surface"><span class="material-symbols-outlined">close</span></button>
 </div>
 <div class="flex flex-col gap-4">
-<label class="flex flex-col gap-1"><span class="font-label-sm text-label-sm text-on-surface-variant">Empleado</span>
+<!-- Alcance: una persona o el equipo completo (traslado, apertura). -->
+<div class="flex flex-col gap-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Aplicar a</span>
+<div class="flex gap-4">
+<label class="flex items-center gap-2 text-sm text-on-surface cursor-pointer"><input type="radio" name="m-scope" value="EMPLOYEE" checked class="cursor-pointer"/> Un empleado</label>
+<label class="flex items-center gap-2 text-sm text-on-surface cursor-pointer"><input type="radio" name="m-scope" value="TEAM" class="cursor-pointer"/> Todo un equipo</label>
+</div>
+</div>
+<label id="m-emp-wrap" class="flex flex-col gap-1"><span class="font-label-sm text-label-sm text-on-surface-variant">Empleado</span>
 <select id="m-emp" class="z-input text-sm"><option value="">Selecciona…</option></select></label>
+<label id="m-team-wrap" class="flex flex-col gap-1 hidden"><span class="font-label-sm text-label-sm text-on-surface-variant">Equipo</span>
+<select id="m-team" class="z-input text-sm"><option value="">Selecciona…</option></select>
+<span class="text-label-sm text-on-surface-variant mt-1">Se creará una condición por cada empleado del equipo en ese periodo.</span></label>
 <label class="flex flex-col gap-1"><span class="font-label-sm text-label-sm text-on-surface-variant">Periodo</span>
 <select id="m-period" class="z-input text-sm"><option value="">Selecciona…</option></select></label>
 <label class="flex flex-col gap-1"><span class="font-label-sm text-label-sm text-on-surface-variant">Motivo</span>
@@ -275,11 +301,11 @@
       });
     } catch (e) {}
     try {
-      var periods = await A.get('/periods');
-      periods.forEach(function (p) {
-        var label = p.periodYear + '-' + String(p.periodMonth).padStart(2, '0') + (p.periodType === 'CYCLE' ? ' · Ciclo' : '');
-        var o1 = document.createElement('option'); o1.value = p.periodId; o1.textContent = label; el('f-period').appendChild(o1);
-        var o2 = document.createElement('option'); o2.value = p.periodId; o2.textContent = label; el('m-period').appendChild(o2);
+      // El pago garantizado se otorga sobre un mes concreto, no sobre un ciclo.
+      var months = await A.listPeriods('month');
+      months.forEach(function (p) {
+        var o1 = document.createElement('option'); o1.value = p.periodId; o1.textContent = p.label; el('f-period').appendChild(o1);
+        var o2 = document.createElement('option'); o2.value = p.periodId; o2.textContent = p.label; el('m-period').appendChild(o2);
       });
     } catch (e) {}
     load();
@@ -336,23 +362,69 @@
   el('f-search').addEventListener('input', render);
 
   // Modal
-  function open() { el('modal').classList.remove('hidden'); el('modal').classList.add('flex'); }
+  function open() {
+    // Se reabre siempre en "un empleado": el alcance de equipo es la excepción
+    // y no debe quedar pegado de un uso anterior.
+    var first = document.querySelector('input[name="m-scope"][value="EMPLOYEE"]');
+    if (first) first.checked = true;
+    el('m-team-wrap').classList.add('hidden');
+    el('m-emp-wrap').classList.remove('hidden');
+    el('modal').classList.remove('hidden'); el('modal').classList.add('flex');
+  }
   function close() { el('modal').classList.add('hidden'); el('modal').classList.remove('flex'); el('m-error').classList.add('hidden'); }
   el('btn-new').addEventListener('click', open);
   el('m-close').addEventListener('click', close);
   el('m-cancel').addEventListener('click', close);
+  // ---- Alcance: empleado o equipo completo ----
+  (async function loadTeamsForModal() {
+    try {
+      var teams = await A.get('/teams');
+      teams.forEach(function (t) {
+        var o = document.createElement('option');
+        o.value = t.teamId; o.textContent = t.teamName;
+        el('m-team').appendChild(o);
+      });
+    } catch (e) { /* el selector queda vacío; el guardado avisa */ }
+  })();
+
+  function currentScope() {
+    var checked = document.querySelector('input[name="m-scope"]:checked');
+    return checked ? checked.value : 'EMPLOYEE';
+  }
+
+  document.querySelectorAll('input[name="m-scope"]').forEach(function (r) {
+    r.addEventListener('change', function () {
+      var team = currentScope() === 'TEAM';
+      el('m-team-wrap').classList.toggle('hidden', !team);
+      el('m-emp-wrap').classList.toggle('hidden', team);
+    });
+  });
+
   el('m-save').addEventListener('click', async function () {
-    var employeeId = el('m-emp').value, periodId = el('m-period').value;
+    var scope = currentScope();
+    var periodId = el('m-period').value;
     function showErr(m) { el('m-error-msg').textContent = m; el('m-error').classList.remove('hidden'); el('m-error').classList.add('flex'); }
-    if (!employeeId || !periodId) { showErr('Empleado y periodo son obligatorios.'); return; }
+    if (!periodId) { showErr('El periodo es obligatorio.'); return; }
+
     var payload = {
-      employeeId: employeeId, periodId: periodId, conditionType: el('m-type').value,
+      periodId: periodId, conditionType: el('m-type').value,
       apply80Percent: el('m-80').checked, apply20Percent: el('m-20').checked
     };
+    // El backend exige exactamente uno de los dos: empleado o equipo.
+    if (scope === 'TEAM') {
+      if (!el('m-team').value) { showErr('Selecciona el equipo.'); return; }
+      payload.teamId = el('m-team').value;
+    } else {
+      if (!el('m-emp').value) { showErr('Selecciona el empleado.'); return; }
+      payload.employeeId = el('m-emp').value;
+    }
     if (el('m-notes').value) payload.notes = el('m-notes').value;
+
     try {
-      await A.post('/payment-conditions', payload);
-      A.toast('Condición guardada.');
+      var res = await A.post('/payment-conditions', payload);
+      A.toast(res && res.scope === 'TEAM'
+        ? ('Condición aplicada a ' + res.created + ' empleados de ' + res.teamName + '.')
+        : 'Condición guardada.');
       close();
       load();
     } catch (e) { showErr(e.message || 'No se pudo guardar la condición.'); }

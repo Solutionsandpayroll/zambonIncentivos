@@ -24,7 +24,8 @@ function baseInput(
     components: [],
     curve,
     executionKpiResult: false,
-    cycleMultiplier: 4,
+    // Un mes normal solo devenga: es el régimen de casi todos los equipos.
+    execution20Mode: 'ACCRUE',
     guaranteedPay: null,
     ...overrides,
   };
@@ -74,25 +75,82 @@ describe('calculateEmployeeIncentive', () => {
     expect(r.component80Result.toNumber()).toBe(0);
   });
 
-  it('20% cumplido por ciclo = 20% teórico × 4', () => {
-    const r = calculateEmployeeIncentive(
-      baseInput({ executionKpiResult: true, cycleMultiplier: 4 }),
-    );
-    expect(r.component20Result.toNumber()).toBe(800); // 200 × 4
+  // El 20% no paga sobrecumplimiento: el KPI se cumple o no. Lo que cambia por
+  // régimen es CUÁNDO se cobra.
+  describe('régimen del 20%', () => {
+    it('ACCRUE: un mes cumplido registra pero no paga', () => {
+      const r = calculateEmployeeIncentive(
+        baseInput({ executionKpiResult: true, execution20Mode: 'ACCRUE' }),
+      );
+      // Antes esto pagaba 800 (la bolsa × 4) todos los meses: adelantaba cuatro
+      // bolsas por un solo mes cumplido, sin forma de devolverlo si fallaban
+      // los tres siguientes.
+      expect(r.component20Result.toNumber()).toBe(0);
+      expect(r.executionKpiResult).toBe(true); // el cumplimiento sí queda registrado
+      expect(r.executionCycleMultiplier).toBe(0);
+    });
+
+    it('PAY_MONTHLY (KAM/Directores): cumplido = la bolsa del mes', () => {
+      const r = calculateEmployeeIncentive(
+        baseInput({ executionKpiResult: true, execution20Mode: 'PAY_MONTHLY' }),
+      );
+      expect(r.component20Result.toNumber()).toBe(200);
+      expect(r.executionCycleMultiplier).toBe(1);
+    });
+
+    it('PAY_MONTHLY: no cumplido = 0', () => {
+      const r = calculateEmployeeIncentive(
+        baseInput({ executionKpiResult: false, execution20Mode: 'PAY_MONTHLY' }),
+      );
+      expect(r.component20Result.toNumber()).toBe(0);
+    });
+
+    it('NONE: un equipo mensual no cobra nada en el cierre del ciclo', () => {
+      const r = calculateEmployeeIncentive(
+        baseInput({ executionKpiResult: true, execution20Mode: 'NONE' }),
+      );
+      expect(r.component20Result.toNumber()).toBe(0);
+    });
   });
 
-  it('20% cumplido mensual (KAMS/Directores) = 20% teórico × 1', () => {
-    const r = calculateEmployeeIncentive(
-      baseInput({ executionKpiResult: true, cycleMultiplier: 1 }),
-    );
-    expect(r.component20Result.toNumber()).toBe(200);
-  });
+  // El pago del ciclo es PROPORCIONAL: un mes cumplido = una bolsa mensual.
+  describe('PAY_CYCLE: el cierre paga una bolsa por mes cumplido', () => {
+    const cycle = (met: number) =>
+      calculateEmployeeIncentive(
+        baseInput({
+          execution20Mode: 'PAY_CYCLE',
+          metMonthsInCycle: met,
+          cycleLengthMonths: 4,
+        }),
+      );
 
-  it('20% no cumplido = 0', () => {
-    const r = calculateEmployeeIncentive(
-      baseInput({ executionKpiResult: false, cycleMultiplier: 4 }),
-    );
-    expect(r.component20Result.toNumber()).toBe(0);
+    it('0 de 4 meses cumplidos = 0', () => {
+      expect(cycle(0).component20Result.toNumber()).toBe(0);
+    });
+
+    it('3 de 4 meses cumplidos = 3 bolsas', () => {
+      const r = cycle(3);
+      expect(r.component20Result.toNumber()).toBe(600); // 200 × 3
+      expect(r.executionCycleMultiplier).toBe(3);
+    });
+
+    it('4 de 4 meses cumplidos = el ciclo completo', () => {
+      expect(cycle(4).component20Result.toNumber()).toBe(800); // 200 × 4
+    });
+
+    it('con garantizado, 2 de 4 igual cobra el ciclo completo', () => {
+      // La garantía es sobre SI cobra, no sobre cuándo: el piso del cierre es
+      // el ciclo entero aunque haya cumplido menos meses.
+      const r = calculateEmployeeIncentive(
+        baseInput({
+          execution20Mode: 'PAY_CYCLE',
+          metMonthsInCycle: 2,
+          cycleLengthMonths: 4,
+          guaranteedPay: { apply80: false, apply20: true },
+        }),
+      );
+      expect(r.component20Result.toNumber()).toBe(800); // 200 × 4, no 400
+    });
   });
 
   it('pago garantizado del 80% fuerza la bolsa completa aunque no cumpla', () => {
@@ -106,16 +164,79 @@ describe('calculateEmployeeIncentive', () => {
     expect(r.guaranteedPayApplied).toBe(true);
   });
 
-  it('pago garantizado del 20% paga la bolsa aunque el KPI no se cumpla', () => {
+  it('pago garantizado del 20% paga la bolsa del mes aunque el KPI no se cumpla', () => {
     const r = calculateEmployeeIncentive(
       baseInput({
         executionKpiResult: false,
-        cycleMultiplier: 4,
+        execution20Mode: 'PAY_MONTHLY',
         guaranteedPay: { apply80: false, apply20: true },
       }),
     );
-    expect(r.component20Result.toNumber()).toBe(800); // 200 × 4
+    expect(r.component20Result.toNumber()).toBe(200);
     expect(r.guaranteedPayApplied).toBe(true);
+  });
+
+  it('el garantizado del 20% NO adelanta el calendario en un mes de devengo', () => {
+    // La garantía asegura QUE cobre, no CUÁNDO. Antes esto pagaba bolsa × 4
+    // cada mes a los garantizados; ahora el piso del mes es 0 y el cobro llega
+    // completo en el cierre del ciclo (ver PAY_CYCLE con garantía).
+    const r = calculateEmployeeIncentive(
+      baseInput({
+        executionKpiResult: false,
+        execution20Mode: 'ACCRUE',
+        guaranteedPay: { apply80: false, apply20: true },
+      }),
+    );
+    expect(r.component20Result.toNumber()).toBe(0);
+    expect(r.guaranteedPayApplied).toBe(true);
+  });
+
+  describe('el pago garantizado es un PISO, no un techo', () => {
+    // Caso real: Liliana Oñoro sobrecumplió los tres componentes y con el
+    // garantizado tratado como valor fijo cobraba $851.552 MENOS de lo ganado.
+    it('respeta lo calculado cuando supera la bolsa teórica', () => {
+      const r = calculateEmployeeIncentive(
+        baseInput({
+          // cumplimiento 120% → curva 1.5 → 1.5 × 800 = 1200, por encima de 800
+          components: [{ componentId: 'c1', quota: d(100), sale: d(120), weight: d(1) }],
+          guaranteedPay: { apply80: true, apply20: false },
+        }),
+      );
+      expect(r.component80Result.toNumber()).toBe(1200);
+      expect(r.guaranteedPayApplied).toBe(true);
+    });
+
+    it('cubre el mínimo cuando lo calculado queda por debajo', () => {
+      const r = calculateEmployeeIncentive(
+        baseInput({
+          // cumplimiento 90% → curva 0.5 → 400, por debajo de la bolsa de 800
+          components: [{ componentId: 'c1', quota: d(100), sale: d(90), weight: d(1) }],
+          guaranteedPay: { apply80: true, apply20: false },
+        }),
+      );
+      expect(r.component80Result.toNumber()).toBe(800);
+    });
+
+    it('sin garantizado, el sobrecumplimiento se paga igual', () => {
+      const r = calculateEmployeeIncentive(
+        baseInput({
+          components: [{ componentId: 'c1', quota: d(100), sale: d(120), weight: d(1) }],
+        }),
+      );
+      expect(r.component80Result.toNumber()).toBe(1200);
+      expect(r.guaranteedPayApplied).toBe(false);
+    });
+
+    it('el piso del 20% no duplica lo ya pagado por KPI cumplido', () => {
+      const r = calculateEmployeeIncentive(
+        baseInput({
+          executionKpiResult: true,
+          execution20Mode: 'PAY_MONTHLY',
+          guaranteedPay: { apply80: false, apply20: true },
+        }),
+      );
+      expect(r.component20Result.toNumber()).toBe(200); // la bolsa, no 400
+    });
   });
 
   it('total = 80% + 20%', () => {
@@ -123,10 +244,55 @@ describe('calculateEmployeeIncentive', () => {
       baseInput({
         components: [{ componentId: 'c1', quota: d(100), sale: d(100), weight: d(1) }],
         executionKpiResult: true,
-        cycleMultiplier: 4,
+        execution20Mode: 'PAY_MONTHLY',
       }),
     );
-    // 80% = 800, 20% = 800 → 1600
-    expect(r.totalIncentive.toNumber()).toBe(1600);
+    // 80% = 800, 20% = 200 → 1000
+    expect(r.totalIncentive.toNumber()).toBe(1000);
+  });
+
+  describe('redondeo del cumplimiento a 2 decimales (paridad con el libro)', () => {
+    // La curva oficial tiene umbrales de centésima en centésima. El libro hace
+    // ROUND(venta/cuota, 2) y luego VLOOKUP exacto; el motor debe caer en el
+    // mismo escalón. Caso real: Sandra Medina, Fluimucil 6046/5818.94.
+    const fineCurve = new PayCurve([
+      step(1.03, 1.08),
+      step(1.04, 1.103333),
+      step(1.05, 1.128333),
+    ]);
+
+    it('redondea hacia arriba al escalón que usa el libro', () => {
+      const r = calculateEmployeeIncentive(
+        baseInput({
+          curve: fineCurve,
+          components: [
+            { componentId: 'c1', quota: d(5818.94), sale: d(6046), weight: d(1) },
+          ],
+        }),
+      );
+      // crudo = 1.039021… → 1.04, no 1.03 (que pagaría 1.08)
+      expect(r.details[0].compliancePercent.toNumber()).toBe(1.04);
+      expect(r.details[0].curvePayPercent.toNumber()).toBe(1.103333);
+    });
+
+    it('redondea hacia abajo cuando corresponde', () => {
+      const r = calculateEmployeeIncentive(
+        baseInput({
+          curve: fineCurve,
+          components: [{ componentId: 'c1', quota: d(1000), sale: d(1032), weight: d(1) }],
+        }),
+      );
+      expect(r.details[0].compliancePercent.toNumber()).toBe(1.03);
+      expect(r.details[0].curvePayPercent.toNumber()).toBe(1.08);
+    });
+
+    it('no altera un cumplimiento que ya cae exacto en un escalón', () => {
+      const r = calculateEmployeeIncentive(
+        baseInput({
+          components: [{ componentId: 'c1', quota: d(100), sale: d(100), weight: d(1) }],
+        }),
+      );
+      expect(r.details[0].compliancePercent.toNumber()).toBe(1);
+    });
   });
 });

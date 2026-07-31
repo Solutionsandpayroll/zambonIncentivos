@@ -7,12 +7,25 @@
 <style id="zambon-base">
   /* ----- Motion tokens (custom easings, not browser defaults) ----- */
   :root {
+    /* La interfaz es oscura y solo oscura. Sin esta línea el navegador asume el
+       esquema claro y pinta TODO control nativo con sus valores por defecto:
+       fondo blanco, texto gris claro, y de paso el calendario de <input date>,
+       los spinners de <input number>, la barra de scroll y el caret. Declararlo
+       aquí es la raíz del arreglo; las reglas de .z-input/.cell-input más abajo
+       solo pintan encima. */
+    color-scheme: dark;
+
     --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
     --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
     --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   }
 
   body { background-color: #121414; color: #e2e2e2; }
+
+  /* Red de seguridad: cualquier control que se cree sin .z-input/.cell-input
+     hereda el tema en vez de caer al blanco del navegador. */
+  input, select, textarea { color: #e2e2e2; font-family: inherit; }
+  input::placeholder, textarea::placeholder { color: #92927a; opacity: 1; }
 
   .material-symbols-outlined {
     font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
@@ -176,6 +189,23 @@
     -webkit-box-shadow: 0 0 0 1000px #1a1c1c inset;
   }
   .z-input:focus { outline: none; border-bottom-color: #c3cd17; box-shadow: none; }
+
+  /* Blindaje anti-regresión.
+     El plugin `forms` de Tailwind emitía reglas para [type='text'], [type='number'],
+     [type='date']... con `background-color:#fff`. Un selector de atributo tiene la
+     MISMA especificidad (0,1,0) que .z-input, y el CDN inyecta su CSS DESPUÉS de
+     este <style>, así que ganaba por orden de aparición: los campos salían blancos
+     con texto gris, y solo se corregían al enfocar porque .z-input:focus es (0,2,0).
+     Los <select> se salvaban porque el plugin los matchea con el selector de
+     elemento `select` (0,0,1), por debajo de .z-input.
+     La causa se eliminó quitando `?plugins=forms` del <script> del CDN; estas
+     reglas combinan clase+atributo (0,2,0) para que ningún CSS externo cargado
+     más tarde pueda repetir la regresión. */
+  input.z-input[type], textarea.z-input, select.z-input,
+  input.cell-input[type] { background-color: rgba(26, 28, 28, 0.55); color: #e2e2e2; }
+  input.cell-input[type]:focus { background-color: rgba(195, 205, 23, 0.06); }
+  /* `appearance:none` lo aportaba el plugin; al quitarlo hay que declararlo. */
+  select.z-input { appearance: none; -webkit-appearance: none; }
 
   /* ============================================================
      CELL-INPUT  (celda editable dentro de una tabla: cuotas, pesos, curva)

@@ -29,8 +29,13 @@ export class OrganizationController {
     @CurrentUser() user: AuthenticatedUser,
     @Query('teamId') teamId?: string,
     @Query('zoneId') zoneId?: string,
+    @Query('withoutTeam') withoutTeam?: string,
   ) {
-    return this.organization.listEmployees(user, { teamId, zoneId });
+    return this.organization.listEmployees(user, {
+      teamId,
+      zoneId,
+      withoutTeam: withoutTeam === 'true',
+    });
   }
 
   @Post('employees')

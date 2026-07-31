@@ -44,6 +44,30 @@ describe('latestVersionOnly', () => {
 });
 
 describe('consolidate', () => {
+  // Con ciclos, un reporte abarca varios periodos por diseño: los 4 meses más
+  // el cierre. Contar filas daría 5 empleados donde hay 1.
+  it('cuenta personas, no empleado-periodos, en un reporte multi-periodo', () => {
+    const rows = [
+      row({ employeeId: 'e1', periodId: 'ene' }),
+      row({ employeeId: 'e1', periodId: 'feb' }),
+      row({ employeeId: 'e1', periodId: 'ciclo1' }),
+      row({ employeeId: 'e2', periodId: 'ene' }),
+    ];
+    const t = consolidate(rows);
+    expect(t.employeeCount).toBe(2);
+    // Los importes sí se suman por periodo: son pagos distintos.
+    expect(t.totalIncentive.toNumber()).toBe(4000);
+  });
+
+  it('el garantizado también cuenta personas', () => {
+    const rows = [
+      row({ employeeId: 'e1', periodId: 'ene', guaranteedPayApplied: true }),
+      row({ employeeId: 'e1', periodId: 'feb', guaranteedPayApplied: true }),
+      row({ employeeId: 'e2', periodId: 'ene', guaranteedPayApplied: false }),
+    ];
+    expect(consolidate(rows).guaranteedCount).toBe(1);
+  });
+
   it('suma solo la versión vigente (no las históricas)', () => {
     // e1 tiene 3 versiones; solo la v3 (1200) debe contar.
     const rows = [

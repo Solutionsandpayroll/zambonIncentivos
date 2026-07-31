@@ -19,8 +19,9 @@ describe('CatalogsService.setCurvePay', () => {
       $transaction: jest.fn((cb: any) => cb(tx)),
     };
     const audit = { record: jest.fn() };
+    const periods = { resolveParameterPeriodIds: jest.fn().mockResolvedValue(['p1']) };
     return {
-      service: new CatalogsService(prisma as never, audit as never),
+      service: new CatalogsService(prisma as never, audit as never, periods as never),
       prisma,
       tx,
     };

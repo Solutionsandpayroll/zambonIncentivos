@@ -4,15 +4,20 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { createHash } from 'crypto';
 import { BatchStatus } from '@prisma/client';
 import { SalesImportRepository } from './sales-import.repository';
 import {
   parseSalesFile,
+  parseSalesGrid,
   ParsedSalesRow,
   RowError,
 } from './domain/sales-file-parser';
+import { readSalesSheet } from './domain/xlsx-sheet-reader';
+import { buildSalesTemplate } from './domain/sales-template.builder';
+import { PeriodResolverService } from '../../shared/periods/period-resolver.service';
 
 export interface ImportResult {
   batchId: string;
@@ -31,7 +36,10 @@ export interface ImportResult {
 export class SalesImportService {
   private readonly logger = new Logger(SalesImportService.name);
 
-  constructor(private readonly repo: SalesImportRepository) {}
+  constructor(
+    private readonly repo: SalesImportRepository,
+    private readonly periods: PeriodResolverService,
+  ) {}
 
   /**
    * Importa un archivo de ventas para un periodo (USECASES §3 backend).
@@ -53,20 +61,37 @@ export class SalesImportService {
     if (period.isClosed) {
       throw new ConflictException('El periodo está cerrado; no admite cargas');
     }
+    if (period.periodType === 'CYCLE') {
+      throw new UnprocessableEntityException(
+        'Las ventas se cargan por mes, no por ciclo',
+      );
+    }
 
-    const content = fileBuffer.toString('utf-8');
+    // Detección por bytes mágicos (un .xlsx es un ZIP: 'PK\x03\x04') en vez de
+    // por extensión: un Excel renombrado a .csv daría basura y un error confuso.
+    const isXlsx =
+      fileBuffer.length >= 4 &&
+      fileBuffer[0] === 0x50 &&
+      fileBuffer[1] === 0x4b &&
+      fileBuffer[2] === 0x03 &&
+      fileBuffer[3] === 0x04;
+
     const fileHash = createHash('sha256').update(fileBuffer).digest('hex');
 
     const dup = await this.repo.findBatchByHash(periodId, fileHash);
     if (dup) {
       throw new ConflictException(
-        'Este archivo ya fue cargado para el periodo (hash repetido)',
+        'Este archivo idéntico ya se cargó en el periodo. Si necesitas corregir ' +
+          'datos, edita el archivo y vuelve a subirlo; si quieres reprocesar lo ' +
+          'ya cargado, ve directamente al paso de cálculo.',
       );
     }
 
     let parsed;
     try {
-      parsed = parseSalesFile(content);
+      parsed = isXlsx
+        ? parseSalesGrid(await readSalesSheet(fileBuffer))
+        : parseSalesFile(fileBuffer.toString('utf-8'));
     } catch (e) {
       // Error estructural (columnas faltantes, vacío) → 400, sin crear lote.
       throw new BadRequestException(
@@ -79,6 +104,7 @@ export class SalesImportService {
       uploadedByUserId: userId,
       fileName,
       fileHash,
+      sourceFormat: isXlsx ? 'XLSX' : 'CSV',
     });
 
     // Validación contra BD: existencia de documento y componente + periodo.
@@ -135,6 +161,74 @@ export class SalesImportService {
       },
       errors: dbErrors,
     };
+  }
+
+  /**
+   * Arma la plantilla de ventas de un (periodo, equipo): una fila por cada
+   * empleado del equipo × componente que ese equipo mide en el periodo.
+   *
+   * Se valida aquí y no al calcular porque es el punto útil para fallar: si el
+   * equipo no tiene pesos o no tiene gente, el cálculo tampoco produciría nada,
+   * y avisarlo al descargar ahorra el viaje completo.
+   */
+  async generateTemplate(
+    periodId: string,
+    teamId: string,
+  ): Promise<{ fileName: string; buffer: Buffer }> {
+    const period = await this.repo.findPeriodById(periodId);
+    if (!period) throw new NotFoundException('El periodo no existe');
+    if (period.isClosed) {
+      throw new ConflictException('El periodo está cerrado; no admite cargas');
+    }
+    if (period.periodType === 'CYCLE') {
+      throw new UnprocessableEntityException(
+        'La plantilla de ventas es mensual: elige un mes, no un ciclo',
+      );
+    }
+
+    const team = await this.repo.findTeamById(teamId);
+    if (!team) throw new NotFoundException('El equipo no existe');
+
+    // Pesos y cuotas se heredan del ciclo si el mes no los tiene propios.
+    const parameterPeriodIds =
+      await this.periods.resolveParameterPeriodIds(periodId);
+
+    const components = await this.repo.teamComponentsForPeriod(
+      teamId,
+      parameterPeriodIds,
+    );
+    if (components.length === 0) {
+      throw new UnprocessableEntityException(
+        `El equipo "${team.teamName}" no tiene pesos de componentes definidos para el periodo. ` +
+          'Defínelos en Componentes y pesos antes de cargar ventas.',
+      );
+    }
+
+    const employees = await this.repo.teamEmployeesForPeriod(teamId, period);
+    if (employees.length === 0) {
+      throw new UnprocessableEntityException(
+        `El equipo "${team.teamName}" no tiene empleados asignados en el periodo.`,
+      );
+    }
+
+    // Cuotas del ciclo (o del mes si las sobreescribe): la plantilla las trae
+    // escritas y bloqueadas — la cuota se define en Cuotas, no en el archivo.
+    const quotas = await this.repo.quotasForEmployees(
+      employees.map((e) => e.employeeId).filter((id): id is string => Boolean(id)),
+      parameterPeriodIds,
+    );
+
+    const periodLabel = `${period.periodYear}-${String(period.periodMonth).padStart(2, '0')}`;
+    const buffer = await buildSalesTemplate({
+      periodLabel,
+      teamName: team.teamName,
+      employees,
+      components,
+      quotas,
+    });
+
+    const slug = (team.teamCode ?? team.teamName).replace(/[^A-Za-z0-9_-]+/g, '_');
+    return { fileName: `plantilla_ventas_${slug}_${periodLabel}.xlsx`, buffer };
   }
 
   async listBatches(periodId?: string) {

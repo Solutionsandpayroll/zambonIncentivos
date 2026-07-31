@@ -1,4 +1,6 @@
 import { Decimal } from '@prisma/client/runtime/library';
+import { computeIdealScenario } from '../incentives/domain/ideal-scenario';
+import { theoreticalMultiplierFor } from '../incentives/domain/execution-rules';
 
 /** Mappers entidad Prisma → filas de reporte. Entrada laxa (el include garantiza relaciones). */
 
@@ -14,14 +16,34 @@ function fullNameOf(p: {
 
 /** Fila de tabla consolidada (cédula, empleado, equipo, 80%, 20%, total, estado). */
 export function toReportRow(h: any) {
+  const totalIncentive = num(h.totalIncentive);
+  // Escenario ideal: lo que ganaría cumpliendo el 100%. Se deriva de las bolsas
+  // teóricas que ya están guardadas en el header, sin recalcular nada.
+  const ideal = computeIdealScenario(
+    {
+      component80Theoretical: num(h.component80Theoretical),
+      component20Theoretical: num(h.component20Theoretical),
+      executionCycleMultiplier: theoreticalMultiplierFor(h.executionPayMonthly ?? false),
+    },
+    totalIncentive,
+  );
+
   return {
     employeeId: h.employeeId,
     documentNumber: h.employee.person.documentNumber,
     fullName: fullNameOf(h.employee.person),
     team: h.team?.teamName ?? null,
+    // El periodo viaja en la fila porque una exportación puede abarcar varios:
+    // sin él, dos liquidaciones de la misma persona en meses distintos se leen
+    // como duplicados.
+    period: h.period
+      ? `${h.period.periodYear}-${String(h.period.periodMonth).padStart(2, '0')}`
+      : null,
     component80: num(h.component80Result),
     component20: num(h.component20Result),
-    totalIncentive: num(h.totalIncentive),
+    totalIncentive,
+    idealTotal: ideal.idealTotal,
+    achievementPercent: ideal.achievementPercent,
     guaranteedPayApplied: h.guaranteedPayApplied,
     calculationVersion: h.calculationVersion,
     status: h.calculationStatus,
@@ -50,6 +72,14 @@ export function toEmployeeReport(h: any) {
       cycleMultiplier: h.executionCycleMultiplier,
     },
     totalIncentive: num(h.totalIncentive),
+    ideal: computeIdealScenario(
+      {
+        component80Theoretical: num(h.component80Theoretical),
+        component20Theoretical: num(h.component20Theoretical),
+        executionCycleMultiplier: theoreticalMultiplierFor(h.executionPayMonthly ?? false),
+      },
+      num(h.totalIncentive),
+    ),
     guaranteedPayApplied: h.guaranteedPayApplied,
     calculationVersion: h.calculationVersion,
     details: (h.details ?? []).map((d: any) => ({

@@ -14,7 +14,13 @@ describe('CatalogsService.setTargets', () => {
       $transaction: jest.fn((ops: any[]) => Promise.all(ops)),
     };
     return {
-      service: new CatalogsService(prisma as never, { record: jest.fn() } as never),
+      service: new CatalogsService(
+        prisma as never,
+        { record: jest.fn() } as never,
+        // Sin ciclo padre: el resolutor devuelve solo el mes, que es lo que
+        // estos casos prueban (la escritura, no la herencia).
+        { resolveParameterPeriodIds: jest.fn().mockResolvedValue(['p1']) } as never,
+      ),
       prisma,
       upsert,
     };

@@ -58,13 +58,61 @@ export class AdminRepository {
   createPaymentCondition(dto: CreatePaymentConditionDto) {
     return this.prisma.employeePaymentCondition.create({
       data: {
-        employeeId: dto.employeeId,
+        employeeId: dto.employeeId!,
         periodId: dto.periodId,
         conditionType: dto.conditionType,
         apply80Percent: dto.apply80Percent ?? false,
         apply20Percent: dto.apply20Percent ?? false,
         notes: dto.notes ?? null,
       },
+    });
+  }
+
+  findTeamById(teamId: string) {
+    return this.prisma.team.findUnique({ where: { teamId } });
+  }
+
+  /**
+   * Empleados activos del equipo vigentes en el periodo, con el mismo predicado
+   * de fechas que usa el motor: si alguien cambió de equipo, el garantizado se
+   * aplica a quien pertenecía al equipo EN ESE periodo.
+   */
+  async teamEmployeeIds(
+    teamId: string,
+    period: { startDate: Date; endDate: Date },
+  ): Promise<string[]> {
+    const rows = await this.prisma.employee.findMany({
+      where: {
+        active: true,
+        teamAssignments: {
+          some: {
+            teamId,
+            active: true,
+            isPrimary: true,
+            validFrom: { lte: period.endDate },
+            OR: [{ validTo: null }, { validTo: { gte: period.startDate } }],
+          },
+        },
+      },
+      select: { employeeId: true },
+    });
+    return rows.map((r) => r.employeeId);
+  }
+
+  /** Crea el garantizado para varios empleados de una sola vez. */
+  createPaymentConditionsForEmployees(
+    employeeIds: string[],
+    dto: CreatePaymentConditionDto,
+  ) {
+    return this.prisma.employeePaymentCondition.createMany({
+      data: employeeIds.map((employeeId) => ({
+        employeeId,
+        periodId: dto.periodId,
+        conditionType: dto.conditionType,
+        apply80Percent: dto.apply80Percent ?? false,
+        apply20Percent: dto.apply20Percent ?? false,
+        notes: dto.notes ?? null,
+      })),
     });
   }
 }

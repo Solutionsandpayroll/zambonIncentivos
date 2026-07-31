@@ -1,46 +1,56 @@
 <!--
-  Zambon OS — Canonical Sidebar.
-  Copy this <aside> into every page. To mark the current page, add the class
-  "z-nav-item--active" and aria-current="page" to the matching <a>, and set its
-  icon font-variation-settings to 'FILL' 1. Leave all others as plain .z-nav-item.
+  Zambon OS — Sidebar canónico.
+  Copia este <aside> en cada página. Para marcar la página actual, añade la clase
+  "z-nav-item--active" y aria-current="page" al <a> correspondiente, y pon su
+  icono en font-variation-settings: 'FILL' 1. Los demás quedan como .z-nav-item.
 
-  Navigation is ENGLISH everywhere:
-    Dashboard · Production Line · Results · Reports · Admin
-  Icons are fixed per destination:
-    dashboard · factory · analytics · description · admin_panel_settings
-  Link targets: ../home/code.html, ../calculof/code.html, ../resultsf/code.html,
-                ../reportesf/code.html, ../adminf/code.html
+  La navegación va en ESPAÑOL (docs/diseno/diseno-frontend.md §4):
+    Inicio · Cálculo · Resultados · Reportes · Admin
+  Iconos fijos por destino:
+    dashboard · calculate · analytics · description · admin_panel_settings
+  Destinos: ../home/code.html, ../calculof/code.html, ../resultsf/code.html,
+            ../reportesf/code.html, ../adminf/code.html
+
+  PERFIL: el nombre y el rol NO se escriben a mano. Los rellena
+  `ZambonAPI.fillSidebar()` desde la sesión (GET /auth/me), que busca los
+  atributos `data-user-name` y `data-user-role`. El texto del HTML es solo el
+  marcador '—' que se ve mientras carga; un nombre quemado ahí sería un dato
+  falso en pantalla.
+
+  PERMISOS: `ZambonAPI.requireAuth()` retira del menú las secciones que el rol
+  no puede ver (applyNavPermissions), así que aquí no se condiciona nada.
 -->
 <aside class="z-sidebar hidden md:flex">
   <div class="px-6 mb-10">
     <h1 class="text-xl font-black tracking-tighter text-primary-container font-['Poppins']">Zambon</h1>
-    <p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Incentive Engine</p>
+    <p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Motor de Incentivos</p>
   </div>
   <nav class="flex-1 flex flex-col gap-1">
     <a class="z-nav-item" href="../home/code.html">
-      <span class="material-symbols-outlined">dashboard</span>Dashboard
+      <span class="material-symbols-outlined">dashboard</span>Inicio
     </a>
     <a class="z-nav-item" href="../calculof/code.html">
-      <span class="material-symbols-outlined">factory</span>Production Line
+      <span class="material-symbols-outlined">calculate</span>Cálculo
     </a>
     <a class="z-nav-item" href="../resultsf/code.html">
-      <span class="material-symbols-outlined">analytics</span>Results
+      <span class="material-symbols-outlined">analytics</span>Resultados
     </a>
     <a class="z-nav-item" href="../reportesf/code.html">
-      <span class="material-symbols-outlined">description</span>Reports
+      <span class="material-symbols-outlined">description</span>Reportes
     </a>
     <a class="z-nav-item" href="../adminf/code.html">
       <span class="material-symbols-outlined">admin_panel_settings</span>Admin
     </a>
   </nav>
+  <!-- Perfil real — lo rellena fillSidebar() desde la sesión (GET /auth/me) -->
   <div class="px-6 mt-auto pt-6 border-t border-white/5">
     <div class="flex items-center gap-3">
       <div class="w-10 h-10 rounded-full bg-surface-container-high border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
         <span class="material-symbols-outlined text-on-surface-variant text-[20px]">person</span>
       </div>
       <div class="overflow-hidden">
-        <p class="font-label-bold text-label-bold text-on-surface truncate">Carlos Zambon</p>
-        <p class="font-label-sm text-label-sm text-on-surface-variant truncate">Incentive Manager</p>
+        <p class="font-label-bold text-label-bold text-on-surface truncate" data-user-name>—</p>
+        <p class="font-label-sm text-label-sm text-on-surface-variant truncate" data-user-role>—</p>
       </div>
     </div>
   </div>

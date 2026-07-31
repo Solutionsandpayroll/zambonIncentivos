@@ -2,12 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { Decimal } from '@prisma/client/runtime/library';
 import { PrismaService } from '../../shared/database/prisma.service';
 import { EmployeeCalculationResult } from './domain/calculation-engine';
+import { preferMonthOverCycle } from '../../shared/periods/parameter-precedence';
 
 /** Insumos crudos de un empleado para un periodo, ya agregados. */
 export interface EmployeeInputs {
   employeeId: string;
   teamId: string;
   teamCode: string | null;
+  /** ¿El equipo cobra el 20% cada mes en vez de acumularlo al ciclo? */
+  pays20Monthly: boolean;
   baseSalary: Decimal;
   /** venta agregada + cuota + peso por componente. */
   components: {
@@ -38,11 +41,19 @@ export class IncentivesRepository {
     return rows.map((r) => r.employeeId);
   }
 
-  /** Escalones de la curva de pago del periodo (global, componentId = null). */
-  async loadCurveSteps(periodId: string) {
-    return this.prisma.curvePay.findMany({
-      where: { periodId, active: true },
+  /**
+   * Escalones de la curva de pago (global, componentId = null).
+   *
+   * `parameterPeriodIds` viene en orden de precedencia `[mes, ciclo]`: la curva
+   * se define una vez en el ciclo y el mes puede sobreescribirla. La precedencia
+   * es por componente y NUNCA mezcla — una escalera hecha de dos periodos
+   * distintos no describe ninguna curva real.
+   */
+  async loadCurveSteps(parameterPeriodIds: string[]) {
+    const rows = await this.prisma.curvePay.findMany({
+      where: { periodId: { in: parameterPeriodIds }, active: true },
       select: {
+        periodId: true,
         componentId: true,
         minCompliancePercent: true,
         payPercent: true,
@@ -50,6 +61,13 @@ export class IncentivesRepository {
       },
       orderBy: { minCompliancePercent: 'asc' },
     });
+
+    const [monthId] = parameterPeriodIds;
+    return preferMonthOverCycle(
+      rows.filter((r) => r.periodId === monthId),
+      rows.filter((r) => r.periodId !== monthId),
+      (r) => r.componentId ?? 'GLOBAL',
+    );
   }
 
   /**
@@ -60,17 +78,39 @@ export class IncentivesRepository {
   async loadEmployeeInputs(
     employeeId: string,
     periodId: string,
+    /** `[mes, ciclo]` por precedencia. Sin ciclo padre es `[mes]`. */
+    parameterPeriodIds: string[] = [periodId],
   ): Promise<EmployeeInputs | null> {
+    // El equipo se resuelve A LA FECHA DEL PERIODO, no "el más reciente": si
+    // alguien cambió de equipo, el periodo anterior debe liquidarse con el
+    // equipo que tenía entonces (sus pesos y su curva), no con el de hoy.
+    const period = await this.prisma.period.findUnique({
+      where: { periodId },
+      select: { startDate: true, endDate: true },
+    });
+    if (!period) return null;
+
     const employee = await this.prisma.employee.findUnique({
       where: { employeeId },
       select: {
         employeeId: true,
         baseSalary: true,
         teamAssignments: {
-          where: { active: true, isPrimary: true },
+          where: {
+            active: true,
+            isPrimary: true,
+            // La asignación se solapa con el periodo: empezó antes de que
+            // terminara y no se cerró antes de que empezara.
+            validFrom: { lte: period.endDate },
+            OR: [{ validTo: null }, { validTo: { gte: period.startDate } }],
+          },
           orderBy: { validFrom: 'desc' },
           take: 1,
-          select: { team: { select: { teamId: true, teamCode: true } } },
+          select: {
+            team: {
+              select: { teamId: true, teamCode: true, pays20Monthly: true },
+            },
+          },
         },
       },
     });
@@ -85,17 +125,30 @@ export class IncentivesRepository {
       _sum: { saleValue: true },
     });
 
-    // Cuotas del empleado en el periodo.
-    const targets = await this.prisma.teamComponentTarget.findMany({
-      where: { employeeId, periodId },
-      select: { componentId: true, quotaValue: true },
-    });
+    // Cuotas y pesos: se definen en el ciclo y el mes puede sobreescribirlos.
+    // La precedencia es por empleado (cuotas) y por equipo (pesos), entera:
+    // si el mes trae alguna fila, esa manda y el ciclo no aporta nada más.
+    const [monthId] = parameterPeriodIds;
 
-    // Pesos del equipo en el periodo.
-    const weights = await this.prisma.teamComponentWeight.findMany({
-      where: { teamId: team.teamId, periodId },
-      select: { componentId: true, weightPercent: true },
+    const targetRows = await this.prisma.teamComponentTarget.findMany({
+      where: { employeeId, periodId: { in: parameterPeriodIds } },
+      select: { periodId: true, componentId: true, quotaValue: true },
     });
+    const targets = preferMonthOverCycle(
+      targetRows.filter((r) => r.periodId === monthId),
+      targetRows.filter((r) => r.periodId !== monthId),
+      () => employeeId,
+    );
+
+    const weightRows = await this.prisma.teamComponentWeight.findMany({
+      where: { teamId: team.teamId, periodId: { in: parameterPeriodIds } },
+      select: { periodId: true, componentId: true, weightPercent: true },
+    });
+    const weights = preferMonthOverCycle(
+      weightRows.filter((r) => r.periodId === monthId),
+      weightRows.filter((r) => r.periodId !== monthId),
+      () => team.teamId,
+    );
 
     const quotaByComp = new Map(
       targets.map((t) => [t.componentId, t.quotaValue]),
@@ -122,19 +175,88 @@ export class IncentivesRepository {
       select: { apply80Percent: true, apply20Percent: true },
     });
 
+    // Cumplimiento del KPI del 20%, marcado por Nómina antes de calcular.
+    const kpi = await this.prisma.employeeExecutionKpi.findUnique({
+      where: { employeeId_periodId: { employeeId, periodId } },
+      select: { meetsKpi: true },
+    });
+
     return {
       employeeId,
       teamId: team.teamId,
       teamCode: team.teamCode,
+      pays20Monthly: team.pays20Monthly,
       baseSalary: employee.baseSalary,
       components,
       guaranteedPay: condition
         ? { apply80: condition.apply80Percent, apply20: condition.apply20Percent }
         : null,
-      // KPI de ejecución: sin subsistema de KPIs aún, se asume cumplido cuando
-      // hay pago garantizado del 20%; por defecto false. Punto de extensión.
-      executionKpiResult: condition?.apply20Percent ?? false,
+      // Sin marca = no cumple: nadie ha certificado el cumplimiento, y pagar de
+      // menos se corrige recalculando (todo queda versionado) mientras que pagar
+      // de más no. El pago garantizado del 20% sigue prevaleciendo sobre esto:
+      // lo aplica el motor aparte, vía `guaranteedPay.apply20`.
+      executionKpiResult: kpi?.meetsKpi ?? false,
     };
+  }
+
+  /**
+   * Candidatos a la liquidación de un ciclo: quienes tienen alguna liquidación
+   * en CUALQUIER mes del ciclo.
+   *
+   * No se buscan por ventas del ciclo porque un ciclo no tiene ventas propias.
+   * Se excluyen los equipos que cobran el 20% mensual: ya cobraron mes a mes.
+   */
+  async cycleCandidates(monthIds: string[]): Promise<
+    { employeeId: string; teamId: string; baseSalary: Decimal }[]
+  > {
+    if (monthIds.length === 0) return [];
+
+    const headers = await this.prisma.incentiveCalculationHeader.findMany({
+      where: {
+        periodId: { in: monthIds },
+        team: { pays20Monthly: false },
+      },
+      distinct: ['employeeId'],
+      // El equipo y el salario del mes MÁS RECIENTE del ciclo: si alguien
+      // cambió de equipo a mitad de ciclo, el cierre lo paga con el último.
+      orderBy: [{ periodId: 'desc' }, { calculationVersion: 'desc' }],
+      select: { employeeId: true, teamId: true, baseSalary: true },
+    });
+    return headers;
+  }
+
+  /**
+   * Meses del ciclo con KPI cumplido, por empleado. Un solo `groupBy` en vez de
+   * una consulta por persona.
+   */
+  async metMonthsByEmployee(
+    monthIds: string[],
+  ): Promise<Map<string, number>> {
+    if (monthIds.length === 0) return new Map();
+
+    const rows = await this.prisma.employeeExecutionKpi.groupBy({
+      by: ['employeeId'],
+      where: { periodId: { in: monthIds }, meetsKpi: true },
+      _count: { _all: true },
+    });
+    return new Map(rows.map((r) => [r.employeeId, r._count._all]));
+  }
+
+  /**
+   * Empleados con garantía del 20% en ALGÚN mes del ciclo.
+   *
+   * Se mira todo el ciclo, no solo el último mes: una garantía otorgada en
+   * febrero se evaporaría al cierre si solo se consultara abril.
+   */
+  async guaranteed20InCycle(monthIds: string[]): Promise<Set<string>> {
+    if (monthIds.length === 0) return new Set();
+
+    const rows = await this.prisma.employeePaymentCondition.findMany({
+      where: { periodId: { in: monthIds }, apply20Percent: true },
+      distinct: ['employeeId'],
+      select: { employeeId: true },
+    });
+    return new Set(rows.map((r) => r.employeeId));
   }
 
   /** Última versión de cálculo de un empleado en un periodo (0 si no hay). */
@@ -157,7 +279,7 @@ export class IncentivesRepository {
     teamId: string,
     version: number,
     result: EmployeeCalculationResult,
-    cycleMultiplier: number,
+    pays20Monthly: boolean,
   ): Promise<string> {
     const header = await this.prisma.incentiveCalculationHeader.create({
       data: {
@@ -173,8 +295,11 @@ export class IncentivesRepository {
         totalIncentive: result.totalIncentive,
         guaranteedPayApplied: result.guaranteedPayApplied,
         executionKpiResult: result.executionKpiResult,
-        executionPayMonthly: cycleMultiplier === 1,
-        executionCycleMultiplier: cycleMultiplier,
+        execution20Mode: result.execution20Mode,
+        executionPayMonthly: pays20Monthly,
+        // Bolsas del 20% realmente pagadas por esta liquidación: 0 en un mes
+        // que solo devenga, N en el cierre del ciclo.
+        executionCycleMultiplier: result.executionCycleMultiplier,
         calculationVersion: version,
         details: {
           create: result.details.map((d) => ({

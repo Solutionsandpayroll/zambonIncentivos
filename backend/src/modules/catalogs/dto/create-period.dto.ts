@@ -3,6 +3,7 @@ import {
   IsEnum,
   IsInt,
   IsOptional,
+  IsUUID,
   Max,
   Min,
 } from 'class-validator';
@@ -26,6 +27,11 @@ export class CreatePeriodDto {
   @IsInt()
   @Min(1)
   cycleNumber?: number;
+
+  /** Ciclo al que pertenece este mes. Un CYCLE no lo lleva. */
+  @IsOptional()
+  @IsUUID()
+  parentPeriodId?: string;
 
   @IsDateString()
   startDate!: string;

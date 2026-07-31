@@ -1,0 +1,66 @@
+# ============================================================================
+#  Despliegue en Render — Sistema de Incentivos Zambon
+#
+#  Un solo servicio: el backend NestJS sirve la API (/api/v1) y también las
+#  19 pantallas del frontend (ServeStaticModule). No hay servicio estático
+#  aparte, y por eso CORS se queda desactivado (mismo origen).
+#
+#  La base de datos NO se declara aquí: es Supabase, externa a Render. Sus
+#  credenciales se cargan a mano en el panel (ver `sync: false` más abajo).
+# ============================================================================
+services:
+  - type: web
+    name: zambon-incentivos
+    runtime: node
+    plan: free
+    region: oregon
+
+    # El schema de Prisma vive en `prisma/`, FUERA de `backend/`. Con
+    # rootDir Render clona el repo completo y solo cambia el directorio de
+    # trabajo, así que las rutas `../prisma/...` siguen resolviendo.
+    rootDir: backend
+
+    # `--include=dev` es obligatorio: Render instala con NODE_ENV=production y
+    # sin esto omitiría @nestjs/cli, prisma y typescript, dejando el build sin
+    # los binarios `nest` y `prisma` que las tres órdenes siguientes necesitan.
+    buildCommand: >-
+      npm ci --include=dev &&
+      npx prisma generate --schema=../prisma/schema.prisma &&
+      npm run build
+
+    # Las migraciones se aplican al desplegar, antes de que entre tráfico.
+    # `migrate deploy` solo aplica lo pendiente y nunca reescribe el historial
+    # (a diferencia de `migrate dev`, que jamás debe correr en producción).
+    preDeployCommand: npm run migrate:deploy
+
+    startCommand: npm run start:prod
+
+    healthCheckPath: /api/v1/health
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # PORT lo inyecta Render y `main.ts` lo lee. No declararlo aquí: fijarlo
+      # a mano haría que el proceso escuche en un puerto distinto del que el
+      # enrutador consulta, y el despliegue moriría por timeout.
+
+      # CORS desactivado a propósito: el frontend se sirve desde este mismo
+      # servicio. Solo se llena si las pantallas pasan a otro dominio.
+      - key: CORS_ORIGINS
+        value: ""
+
+      # --- Secretos: se cargan en el panel, nunca en el repo ---------------
+      # DATABASE_URL  pooler de Supabase en modo transacción (puerto 6543)
+      # DIRECT_URL    conexión de sesión (puerto 5432), la que usan las migraciones
+      # JWT_SECRET / REFRESH_TOKEN_SECRET  distintos entre sí; con NODE_ENV=
+      #   production el arranque se aborta si faltan. Generar cada uno con:
+      #   node -e "console.log(require('crypto').randomBytes(64).toString('base64url'))"
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: REFRESH_TOKEN_SECRET
+        sync: false

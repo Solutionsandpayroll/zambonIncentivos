@@ -1,7 +1,9 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { AdminRepository } from './admin.repository';
 import { AuditAction, AuditService } from '../../shared/audit/audit.service';
@@ -51,7 +53,63 @@ export class AdminService {
     dto: CreatePaymentConditionDto,
     user: AuthenticatedUser,
   ) {
-    await this.assertEmployeeAndPeriod(dto.employeeId, dto.periodId);
+    if (Boolean(dto.employeeId) === Boolean(dto.teamId)) {
+      throw new BadRequestException(
+        'Indica un empleado o un equipo, pero no ambos.',
+      );
+    }
+
+    // ---- Equipo completo ----
+    if (dto.teamId) {
+      const period = await this.repo.period(dto.periodId);
+      if (!period) throw new NotFoundException('El periodo no existe');
+      if (period.isClosed) {
+        throw new ConflictException(
+          'El periodo está cerrado; no admite cambios administrativos',
+        );
+      }
+
+      const team = await this.repo.findTeamById(dto.teamId);
+      if (!team) throw new NotFoundException('El equipo no existe');
+
+      const employeeIds = await this.repo.teamEmployeeIds(dto.teamId, period);
+      if (employeeIds.length === 0) {
+        throw new UnprocessableEntityException(
+          `El equipo "${team.teamName}" no tiene empleados en el periodo.`,
+        );
+      }
+
+      const created = await this.repo.createPaymentConditionsForEmployees(
+        employeeIds,
+        dto,
+      );
+      await this.audit.record({
+        userId: user.userId,
+        username: user.username,
+        action: AuditAction.PAYMENT_CONDITION_CREATE,
+        entityType: 'employee_payment_condition',
+        entityId: dto.teamId,
+        periodId: dto.periodId,
+        reason: dto.notes ?? null,
+        metadata: {
+          conditionType: dto.conditionType,
+          apply80Percent: dto.apply80Percent ?? false,
+          apply20Percent: dto.apply20Percent ?? false,
+          teamId: dto.teamId,
+          teamName: team.teamName,
+          employeeCount: employeeIds.length,
+        },
+      });
+      return {
+        scope: 'TEAM' as const,
+        teamId: dto.teamId,
+        teamName: team.teamName,
+        created: created.count,
+      };
+    }
+
+    // ---- Un solo empleado ----
+    await this.assertEmployeeAndPeriod(dto.employeeId!, dto.periodId);
 
     const condition = await this.repo.createPaymentCondition(dto);
     await this.audit.record({

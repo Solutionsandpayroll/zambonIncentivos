@@ -68,8 +68,13 @@ async function bootstrap() {
   }
 
   const port = process.env.PORT ?? 3000;
-  await app.listen(port);
-  Logger.log(`Zambon backend escuchando en http://localhost:${port}/api/v1`, 'Bootstrap');
+
+  // Se escucha en 0.0.0.0, no en localhost. Nest hace bind solo a la interfaz
+  // local por defecto, y en un hosting con contenedores (Render, Fly, Railway)
+  // el enrutador vive FUERA del contenedor: no alcanzaría el puerto y el
+  // despliegue moriría por timeout aunque el proceso esté arriba y sano.
+  await app.listen(port, '0.0.0.0');
+  Logger.log(`Zambon backend escuchando en el puerto ${port} (/api/v1)`, 'Bootstrap');
 }
 
 bootstrap();

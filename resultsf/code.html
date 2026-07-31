@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="https://cdn.tailwindcss.com?plugins=container-queries"></script>
 <!-- ===== Zambon OS shared theme (source: /shared/zambon-theme.js) ===== -->
 <script id="tailwind-config">
   tailwind.config = {
@@ -53,7 +53,13 @@
 </script>
 <!-- ===== Zambon OS shared base (source: /shared/zambon-base.html) ===== -->
 <style id="zambon-base">
-  :root { --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); }
+  /* Interfaz oscura y solo oscura. Sin color-scheme el navegador asume el esquema
+     claro y pinta todo control nativo con su fondo blanco y texto gris claro
+     (mas calendario, spinners, scrollbar y caret). Es la raiz del arreglo;
+     .z-input/.cell-input solo pintan encima. */
+  :root { color-scheme: dark; --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); }
+  input, select, textarea { color: #e2e2e2; font-family: inherit; }
+  input::placeholder, textarea::placeholder { color: #92927a; opacity: 1; }
   body { background-color: #121414; color: #e2e2e2; }
   .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
   ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -96,6 +102,15 @@
     -webkit-box-shadow: 0 0 0 1000px #1a1c1c inset;
   }
   .z-input:focus { outline: none; border-bottom-color: #c3cd17; box-shadow: none; }
+  /* Blindaje anti-regresion. El plugin 'forms' de Tailwind pintaba
+     [type='text'|'number'|'date'...] con background-color:#fff, misma
+     especificidad (0,1,0) que .z-input pero inyectado despues por el CDN, asi
+     que ganaba por orden y los campos salian blancos con texto gris. Se quito
+     el plugin; estas reglas (0,2,0) evitan que cualquier CSS externo lo repita. */
+  input.z-input[type], textarea.z-input, select.z-input,
+  input.cell-input[type] { background-color: rgba(26,28,28,0.55); color: #e2e2e2; }
+  input.cell-input[type]:focus { background-color: rgba(195,205,23,0.06); }
+  select.z-input { appearance: none; -webkit-appearance: none; }
   .z-rise { animation: z-rise 300ms var(--ease-out) both; }
   .z-rise-1 { animation-delay: 40ms; } .z-rise-2 { animation-delay: 80ms; } .z-rise-3 { animation-delay: 120ms; } .z-rise-4 { animation-delay: 160ms; }
   @keyframes z-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -128,17 +143,14 @@
 <div class="px-6 mt-auto pt-6 border-t border-white/5">
 <div class="flex items-center gap-3">
 <div class="w-10 h-10 rounded-full bg-surface-container-high border border-white/10 flex items-center justify-center overflow-hidden shrink-0"><span class="material-symbols-outlined text-on-surface-variant text-[20px]">person</span></div>
-<div class="overflow-hidden"><p id="sidebar-user" class="font-label-bold text-label-bold text-on-surface truncate">—</p><p id="sidebar-role" class="font-label-sm text-label-sm text-on-surface-variant truncate">—</p></div>
+<div class="overflow-hidden"><p class="font-label-bold text-label-bold text-on-surface truncate" data-user-name>—</p><p class="font-label-sm text-label-sm text-on-surface-variant truncate" data-user-role>—</p></div>
 </div>
 </div>
 </aside>
 <main class="flex-1 md:ml-64 flex flex-col min-w-0">
 <!-- ===== Top bar ===== -->
 <header class="z-topbar">
-<div class="relative w-full max-w-md group">
-<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-primary-container transition-colors">search</span>
-<input class="z-input pl-10 text-sm" placeholder="Buscar empleado por cédula o nombre..." type="text"/>
-</div>
+<div></div>
 <div class="flex items-center gap-4">
 <button class="p-2 text-on-surface-variant hover:text-primary-container transition-colors relative"><span class="material-symbols-outlined">notifications</span><span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span></button>
 <button class="p-2 text-on-surface-variant hover:text-primary-container transition-colors"><span class="material-symbols-outlined">settings</span></button>
@@ -155,7 +167,7 @@
 </div>
 <div class="flex items-center gap-3">
 <select id="filter-period" class="z-input !w-auto min-w-[150px] text-sm"><option value="">Todos los periodos</option></select>
-<select id="filter-team" class="z-input !w-auto min-w-[170px] text-sm"><option value="">Todos los equipos</option></select>
+<select data-role="sees-others" id="filter-team" class="z-input !w-auto min-w-[170px] text-sm"><option value="">Todos los equipos</option></select>
 </div>
 </div>
 
@@ -210,7 +222,7 @@
 </div>
 
 <!-- Resumen de totales (incentive_calculation_header) -->
-<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 z-rise z-rise-2">
+<div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 z-rise z-rise-2">
 <div class="glass-card rounded-xl p-5">
 <p class="text-label-sm text-on-surface-variant">Base salarial</p>
 <p id="d-base" class="num-cell text-headline-md text-on-surface mt-1">—</p>
@@ -229,6 +241,13 @@
 <p class="text-label-sm text-on-surface-variant">Total liquidado</p>
 <p id="d-total" class="num-cell text-headline-md text-primary-container mt-1">—</p>
 <p class="text-[11px] text-on-surface-variant mt-1">80% + 20%</p>
+</div>
+<!-- Escenario ideal: el techo contractual de la persona, cumpliendo el 100%
+     del 80% y el 100% del 20%. No descuenta ni premia excepciones. -->
+<div class="glass-card rounded-xl p-5">
+<div class="flex items-center justify-between"><p class="text-label-sm text-on-surface-variant">Si cumpliera el 100%</p><span id="d-ideal-pill" class="z-pill z-pill--muted">—</span></div>
+<p id="d-ideal" class="num-cell text-headline-md text-on-surface mt-1">—</p>
+<p id="d-ideal-sub" class="text-[11px] text-on-surface-variant mt-1">—</p>
 </div>
 </div>
 
@@ -308,36 +327,37 @@
   function setText(id, v) { var n = el(id); if (n) n.textContent = v; }
   function show(id) { var n = el(id); if (n) { n.classList.remove('hidden'); n.classList.add('flex'); } }
   function hide(id) { var n = el(id); if (n) { n.classList.add('hidden'); n.classList.remove('flex'); } }
+  // Perfil del sidebar: lo rellena la capa compartida desde la sesión.
+  A.fillSidebar();
 
-  // Usuario en el sidebar
-  var user = A.getUser() || {};
-  setText('sidebar-user', user.username || '—');
-  setText('sidebar-role', (user.roles && user.roles[0]) || '—');
-
-  var state = { periodId: '', teamId: '', headers: [], selectedId: null };
+  var state = { periodId: '', teamId: '', headers: [], selectedId: null, detail: null };
 
   // ---- Carga de filtros (periodos, equipos) ----
   async function loadFilters() {
     try {
-      var periods = await A.get('/periods');
+      var periods = await A.listPeriods('all');
       var sel = el('filter-period');
       periods.forEach(function (p) {
         var o = document.createElement('option');
         o.value = p.periodId;
-        o.textContent = p.periodYear + '-' + String(p.periodMonth).padStart(2, '0') +
-          (p.periodType === 'CYCLE' ? ' (ciclo)' : '');
+        o.textContent = p.label;
         sel.appendChild(o);
       });
     } catch (e) { /* filtros opcionales */ }
-    try {
-      var teams = await A.get('/teams');
-      var selT = el('filter-team');
-      teams.forEach(function (t) {
-        var o = document.createElement('option');
-        o.value = t.teamId; o.textContent = t.teamName;
-        selT.appendChild(o);
-      });
-    } catch (e) { /* filtros opcionales */ }
+    // El filtro por equipo se retira del DOM para un EMPLEADO (data-role):
+    // solo se ve a sí mismo, así que elegir equipo no le aporta nada. Si no
+    // está, ni siquiera se pide el catálogo de equipos.
+    var selT = el('filter-team');
+    if (selT) {
+      try {
+        var teams = await A.get('/teams');
+        teams.forEach(function (t) {
+          var o = document.createElement('option');
+          o.value = t.teamId; o.textContent = t.teamName;
+          selT.appendChild(o);
+        });
+      } catch (e) { /* filtros opcionales */ }
+    }
   }
 
   // ---- Lista de liquidaciones ----
@@ -400,6 +420,7 @@
     hide('detail-empty');
     try {
       var d = await A.get('/results/' + encodeURIComponent(headerId));
+      state.detail = d;
       renderDetail(d);
       el('detail-panel').classList.remove('hidden');
       el('detail-panel').classList.add('flex');
@@ -423,9 +444,38 @@
     setText('d-80', A.money(c80.result));
     setText('d-80-sub', 'Teórico ' + A.money(c80.theoretical));
     setText('d-20', A.money(c20.result));
-    setText('d-20-pill', c20.cycleMultiplier === 1 ? 'Mensual' : ('Ciclo ×' + A.orDash(c20.cycleMultiplier)));
-    setText('d-20-sub', c20.kpiResult === true ? 'Cumple · tope 100%' : (c20.kpiResult === false ? 'No cumple' : '—'));
+
+    // El 20% de casi todos los equipos no se cobra mes a mes: se registra si se
+    // cumplió y se paga al cerrar el ciclo. `accrual` viene solo en ese caso, y
+    // es lo que explica por qué el mes muestra $0 sin que se haya perdido nada.
+    var acc = d.accrual || null;
+    if (acc) {
+      setText('d-20-pill', 'Devenga · ' + acc.cycleLabel);
+      setText('d-20-sub',
+        acc.monthsMet + ' de ' + acc.monthsElapsed + ' transcurridos cumplidos · ' +
+        A.money(acc.pendingAmount) + ' al cierre');
+    } else {
+      setText('d-20-pill', 'Pago mensual');
+      setText('d-20-sub', c20.kpiResult === true ? 'Cumple · tope 100%'
+        : (c20.kpiResult === false ? 'No cumple' : '—'));
+    }
     setText('d-total', A.money(d.totalIncentive));
+
+    // Escenario ideal (100% de todo) y qué fracción se alcanzó.
+    var ideal = d.ideal || {};
+    setText('d-ideal', ideal.idealTotal != null ? A.money(ideal.idealTotal) : A.DASH);
+    setText('d-ideal-sub', ideal.idealTotal != null
+      ? ('80%: ' + A.money(ideal.ideal80) + '  ·  20%: ' + A.money(ideal.ideal20))
+      : A.DASH);
+    var ipill = el('d-ideal-pill');
+    if (ideal.achievementPercent == null) {
+      ipill.textContent = A.DASH; ipill.className = 'z-pill z-pill--muted';
+    } else {
+      var pct = Math.round(ideal.achievementPercent * 100);
+      ipill.textContent = pct + '% del ideal';
+      ipill.className = 'z-pill ' + (ideal.achievementPercent >= 1 ? 'z-pill--active'
+        : ideal.achievementPercent >= 0.8 ? 'z-pill--muted' : 'z-pill--error');
+    }
 
     // Detalle por componente
     var body = el('d-detail-rows');
@@ -449,11 +499,15 @@
 
     // Ejecución 20%
     setText('d-exec-value', A.money(c20.result));
-    setText('d-exec-sub', c20.cycleMultiplier === 1
-      ? 'Pago mensual (multiplicador ×1)'
-      : 'Pago por ciclo (multiplicador ×' + A.orDash(c20.cycleMultiplier) + ') · no paga sobrecumplimiento');
+    setText('d-exec-sub', acc
+      ? ('Se registra este mes y se paga al cerrar ' + acc.cycleLabel +
+         ' · una bolsa por cada mes cumplido')
+      : (c20.cycleMultiplier > 1
+         ? 'Cierre de ciclo: ' + c20.cycleMultiplier + ' bolsa(s) por los meses cumplidos'
+         : 'Pago mensual · no paga sobrecumplimiento'));
     var execPill = el('d-exec-pill');
-    if (c20.kpiResult === true) { execPill.textContent = 'Cumple'; execPill.className = 'z-pill z-pill--active'; }
+    if (acc) { execPill.textContent = 'Devengado'; execPill.className = 'z-pill z-pill--muted'; }
+    else if (c20.kpiResult === true) { execPill.textContent = 'Cumple'; execPill.className = 'z-pill z-pill--active'; }
     else if (c20.kpiResult === false) { execPill.textContent = 'No cumple'; execPill.className = 'z-pill z-pill--error'; }
     else { execPill.textContent = '—'; execPill.className = 'z-pill z-pill--muted'; }
 
@@ -494,30 +548,50 @@
   // Descarga el soporte individual del empleado (POST /reports/export, XLSX).
   async function downloadSupport(emp, per) {
     if (!state.selectedId) return;
-    // El export usa periodId + employeeId; los tenemos del detalle cargado.
+    // El backend exige employeeId para type=EMPLOYEE (400 si falta). Ambos ids
+    // vienen del detalle cargado, así que no dependen del filtro de la pantalla:
+    // un empleado que ve su propia liquidación no tiene por qué elegir periodo.
+    var employeeId = state.detail && state.detail.employee && state.detail.employee.employeeId;
+    var periodId = (state.detail && state.detail.period && state.detail.period.periodId) || state.periodId;
+
+    if (!employeeId || !periodId) {
+      A.toast('No se pudo identificar la liquidación para el soporte.', 'error');
+      return;
+    }
+
+    var btn = el('d-download');
+    var prev = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-outlined text-[18px]">hourglass_top</span>Generando…';
     try {
-      var body = { type: 'EMPLOYEE', format: 'XLSX', filters: {} };
-      // El detalle no expone ids crudos de periodo/empleado en todos los casos;
-      // usamos el filtro actual como mejor aproximación disponible.
-      if (state.periodId) body.filters.periodId = state.periodId;
-      // Sin periodId seleccionado no podemos exportar de forma fiable.
-      if (!body.filters.periodId) {
-        alert('Selecciona un periodo en el filtro para descargar el soporte.');
-        return;
-      }
       var res = await fetch('/api/v1/reports/export', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + A.getToken() },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          type: 'EMPLOYEE',
+          format: 'XLSX',
+          filters: { periodId: periodId, employeeId: employeeId },
+        }),
       });
-      if (!res.ok) throw new Error('export');
+      if (!res.ok) {
+        // El backend explica el motivo real (403 fuera de alcance, 400 datos
+        // faltantes): mostrarlo evita el "no se pudo" opaco de antes.
+        var msg = 'No se pudo generar el soporte.';
+        try { var j = await res.json(); if (j && j.message) msg = j.message; } catch (_) {}
+        throw new Error(msg);
+      }
       var blob = await res.blob();
       var url = URL.createObjectURL(blob);
       var a = document.createElement('a');
-      a.href = url; a.download = 'soporte.xlsx'; a.click();
+      var doc = (emp && emp.documentNumber) || 'empleado';
+      var lbl = per ? (per.year + '-' + String(per.month).padStart(2, '0')) : 'periodo';
+      a.href = url; a.download = 'soporte-' + doc + '-' + lbl + '.xlsx'; a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
-      alert('No se pudo generar el soporte.');
+      A.toast(e.message || 'No se pudo generar el soporte.', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = prev;
     }
   }
 

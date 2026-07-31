@@ -104,6 +104,7 @@ model Employee {
   componentTargets   TeamComponentTarget[]
   novelties          AbsenceOrNovelty[]
   paymentConditions  EmployeePaymentCondition[]
+  executionKpis      EmployeeExecutionKpi[]
   calculationHeaders IncentiveCalculationHeader[]
   appUser            AppUser?
 
@@ -137,6 +138,12 @@ model Team {
   teamCode String  @unique @map("team_code")
   teamName String  @map("team_name")
   active   Boolean @default(true)
+
+  // ¿Cobra el 20% de ejecución cada mes, en vez de acumularlo al ciclo?
+  // Aplica a KAM y las direcciones. Antes era una lista de códigos quemada en
+  // execution-rules.ts que NO coincidía con los códigos reales del catálogo, así
+  // que esos equipos se liquidaban por ciclo sin que nadie lo notara.
+  pays20Monthly Boolean @default(false) @map("pays_20_monthly")
 
   assignments        EmployeeTeamAssignment[]
   componentWeights   TeamComponentWeight[]
@@ -211,6 +218,31 @@ model EmployeePaymentCondition {
   @@map("employee_payment_condition")
 }
 
+// Cumplimiento del KPI de ejecución del 20%, marcado por Nómina antes de correr
+// el cálculo. Es booleano por regla de negocio: el 20% no paga sobrecumplimiento.
+//
+// Distinto de EmployeePaymentCondition.apply_20_percent, que es PAGO GARANTIZADO
+// —una excepción contractual (ingreso nuevo, cambio de zona) que paga con
+// independencia del desempeño y, por tanto, prevalece sobre este cumplimiento.
+model EmployeeExecutionKpi {
+  employeeExecutionKpiId String   @id @default(uuid()) @map("employee_execution_kpi_id")
+  employeeId             String   @map("employee_id")
+  periodId               String   @map("period_id")
+  meetsKpi               Boolean  @default(false) @map("meets_kpi")
+  notes                  String?
+  // Denormalizado, igual que admin_audit_log.username: evita una FK a app_user.
+  markedByUsername       String?  @map("marked_by_username")
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  employee Employee @relation(fields: [employeeId], references: [employeeId])
+  period   Period   @relation(fields: [periodId], references: [periodId])
+
+  @@unique([employeeId, periodId])
+  @@index([periodId])
+  @@map("employee_execution_kpi")
+}
+
 // ============================================================================
 //  2. SEGURIDAD Y USUARIOS
 // ============================================================================
@@ -272,6 +304,16 @@ model Period {
   endDate     DateTime   @map("end_date") @db.Date
   isClosed    Boolean    @default(false) @map("is_closed")
 
+  // Ciclo al que pertenece un mes. Los parámetros (pesos, curva, cuotas) se
+  // definen una vez en el ciclo y los meses los heredan; un mes puede tener sus
+  // propias filas y esas prevalecen.
+  //
+  // Nullable a propósito: un mes sin ciclo resuelve a un solo nivel, que es el
+  // comportamiento anterior a este modelo. Un CYCLE nunca tiene padre.
+  // `periodMonth` de un ciclo es su ÚLTIMO mes (Ciclo1 → 4), para no salirse
+  // del rango 1..12 ni chocar con @@unique([periodYear, periodMonth, periodType]).
+  parentPeriodId String? @map("parent_period_id")
+
   componentWeights   TeamComponentWeight[]
   curvePays          CurvePay[]
   componentTargets   TeamComponentTarget[]
@@ -279,9 +321,14 @@ model Period {
   salesTransactions  SalesTransaction[]
   novelties          AbsenceOrNovelty[]
   paymentConditions  EmployeePaymentCondition[]
+  executionKpis      EmployeeExecutionKpi[]
   calculationHeaders IncentiveCalculationHeader[]
 
+  parent   Period?  @relation("PeriodCycle", fields: [parentPeriodId], references: [periodId])
+  children Period[] @relation("PeriodCycle")
+
   @@unique([periodYear, periodMonth, periodType])
+  @@index([parentPeriodId])
   @@map("period")
 }
 
@@ -446,6 +493,16 @@ model IncentiveCalculationHeader {
   executionCompliancePercent Decimal? @map("execution_compliance_percent") @db.Decimal(9, 6)
   executionPayMonthly        Boolean  @default(false) @map("execution_pay_monthly")
   executionCycleMultiplier   Int      @default(4) @map("execution_cycle_multiplier")
+
+  // Régimen bajo el que se liquidó el 20%, para que un histórico siga siendo
+  // legible cuando la regla cambie:
+  //   PAY_MONTHLY  cobra cada mes (KAM, direcciones)
+  //   ACCRUE       mes normal: se registra el cumplimiento, paga 0
+  //   PAY_CYCLE    cierre de ciclo: paga una bolsa por mes cumplido
+  //   NONE         no aplica
+  // Por defecto PAY_MONTHLY para que las filas anteriores a este cambio se
+  // describan como "se pagó en su momento", que es lo que ocurrió.
+  execution20Mode String @default("PAY_MONTHLY") @map("execution_20_mode")
 
   calculationVersion Int      @default(1) @map("calculation_version")
   calculatedAt       DateTime @default(now()) @map("calculated_at")

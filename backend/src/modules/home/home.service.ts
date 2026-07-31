@@ -22,7 +22,7 @@ export class HomeService {
 
     // Periodo activo (el más reciente abierto).
     const activePeriod = await this.prisma.period.findFirst({
-      where: { isClosed: false },
+      where: { isClosed: false, periodType: 'MONTH' },
       orderBy: [{ periodYear: 'desc' }, { periodMonth: 'desc' }],
     });
 
@@ -48,7 +48,7 @@ export class HomeService {
   private async staffSummary(activePeriodId?: string) {
     const [openPeriods, closedPeriods, pendingBatches, errorBatches, lastCalc] =
       await Promise.all([
-        this.prisma.period.count({ where: { isClosed: false } }),
+        this.prisma.period.count({ where: { isClosed: false, periodType: 'MONTH' } }),
         this.prisma.period.count({ where: { isClosed: true } }),
         this.prisma.salesUploadBatch.count({
           where: { status: { in: ['PENDING', 'PROCESSING'] } },
@@ -81,12 +81,26 @@ export class HomeService {
   }
 
   /**
-   * Avance de liquidación por equipo en el periodo activo: cuántos empleados
-   * del equipo tienen liquidación (versión vigente) frente al total de miembros
-   * activos. Sin periodo activo, devuelve lista vacía.
+   * Avance por equipo de un periodo elegido desde el tablero. Sin `periodId`
+   * cae al periodo activo, que es lo que se muestra al entrar.
    */
-  private async teamProgress(activePeriodId?: string) {
-    if (!activePeriodId) return [];
+  async teamProgressFor(periodId?: string) {
+    if (periodId) return this.teamProgress(periodId);
+    const active = await this.prisma.period.findFirst({
+      where: { isClosed: false, periodType: 'MONTH' },
+      orderBy: [{ periodYear: 'desc' }, { periodMonth: 'desc' }],
+      select: { periodId: true },
+    });
+    return this.teamProgress(active?.periodId);
+  }
+
+  /**
+   * Avance de liquidación por equipo en un periodo: cuántos empleados del
+   * equipo tienen liquidación frente al total de miembros activos. Sin periodo,
+   * devuelve lista vacía.
+   */
+  private async teamProgress(periodId?: string) {
+    if (!periodId) return [];
 
     const teams = await this.prisma.team.findMany({
       where: { active: true },
@@ -103,7 +117,7 @@ export class HomeService {
         // Empleados con al menos una liquidación en el periodo (distinct).
         const calculatedRows =
           await this.prisma.incentiveCalculationHeader.findMany({
-            where: { teamId: team.teamId, periodId: activePeriodId },
+            where: { teamId: team.teamId, periodId },
             distinct: ['employeeId'],
             select: { employeeId: true },
           });

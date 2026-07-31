@@ -7,6 +7,7 @@ import configuration from './config/configuration';
 import { AppRootController } from './modules/app-root.controller';
 import { PrismaModule } from './shared/database/prisma.module';
 import { AuditModule } from './shared/audit/audit.module';
+import { PeriodsModule } from './shared/periods/periods.module';
 import { CommonModule } from './common/common.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -39,6 +40,7 @@ import { HomeModule } from './modules/home/home.module';
     }),
     PrismaModule,
     AuditModule,
+    PeriodsModule,
     CommonModule,
     AuthModule,
     UsersModule,
