@@ -21,7 +21,16 @@ export class ReportsRepository {
   findPeriodsByIds(periodIds: string[]) {
     return this.prisma.period.findMany({
       where: { periodId: { in: periodIds } },
-      select: { periodId: true, periodYear: true, periodMonth: true },
+      // `periodType` y `cycleNumber` entran para poder rotular un ciclo por su
+      // nombre: el `periodMonth` de un ciclo es su último mes (Ciclo 1 → 4), y
+      // mostrarlo crudo lo haría leerse como abril.
+      select: {
+        periodId: true,
+        periodYear: true,
+        periodMonth: true,
+        periodType: true,
+        cycleNumber: true,
+      },
     });
   }
 

@@ -11,6 +11,8 @@ import { consolidate, latestVersionOnly, CalculationRow } from './domain/aggrega
 import { ReportRow, ReportTotals } from './reports.types';
 import { XlsxExporter } from './exporters/xlsx.exporter';
 import { PdfExporter } from './exporters/pdf.exporter';
+import { PeriodResolverService } from '../../shared/periods/period-resolver.service';
+import { periodLabel as formatPeriodLabel } from '../catalogs/domain/period-calendar';
 import {
   ExportFormat,
   ExportReportDto,
@@ -38,7 +40,33 @@ export class ReportsService {
     private readonly scope: ScopeService,
     private readonly xlsx: XlsxExporter,
     private readonly pdf: PdfExporter,
+    private readonly periods: PeriodResolverService,
   ) {}
+
+  /**
+   * Traduce los periodos pedidos a los periodos donde REALMENTE viven las
+   * liquidaciones: un ciclo se sustituye por sus meses, más el ciclo mismo.
+   *
+   * Sin esto, elegir "Ciclo 1" en Reportes devolvía vacío: las liquidaciones
+   * mensuales se guardan contra el MES, así que filtrar por el id del ciclo no
+   * casaba con ninguna. Se conserva también el id del ciclo porque el cierre
+   * (el pago del 20% devengado) sí se guarda contra él, y omitirlo dejaría ese
+   * pago fuera del consolidado del ciclo.
+   */
+  private async expandCycles(ids: string[]): Promise<string[]> {
+    const expanded = new Set<string>();
+
+    for (const id of ids) {
+      expanded.add(id);
+      const period = await this.periods.findWithParent(id);
+      if (period?.periodType !== 'CYCLE') continue;
+      for (const m of await this.periods.monthsOfCycle(id)) {
+        expanded.add(m.periodId);
+      }
+    }
+
+    return [...expanded];
+  }
 
   /** Reporte individual: 80% por componente + 20% (última versión). */
   async employeeReport(
@@ -167,6 +195,12 @@ export class ReportsService {
     const periods = await this.repo.findPeriodsByIds(ids);
     if (periods.length === 0) return 'sin periodo';
 
+    // Un ciclo se rotula por su nombre ('2026 · Ciclo 1 (ene–abr)'), no por su
+    // periodMonth: ese guarda el ÚLTIMO mes del ciclo y se leería como abril.
+    if (periods.length === 1 && periods[0].periodType === 'CYCLE') {
+      return formatPeriodLabel(periods[0]);
+    }
+
     const labels = periods
       .map((p) => ({
         key: p.periodYear * 12 + p.periodMonth,
@@ -201,8 +235,18 @@ export class ReportsService {
   ): Promise<ConsolidatedReport> {
     const allowedEmployeeIds = this.scope.allowedEmployeeIds(user);
 
+    // Un ciclo no tiene liquidaciones propias salvo su cierre: hay que mirar
+    // también sus meses. Se resuelve aquí, que es por donde pasan todas las
+    // rutas de reporte (consolidado, por equipo e individual).
+    const periodIds = await this.expandCycles(
+      filters.periodIds && filters.periodIds.length > 0
+        ? filters.periodIds
+        : [filters.periodId],
+    );
+
     const headers = await this.repo.findHeaders({
       ...filters,
+      periodIds,
       allowedEmployeeIds,
     });
 

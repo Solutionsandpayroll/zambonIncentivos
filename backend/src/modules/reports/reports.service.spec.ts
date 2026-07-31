@@ -15,13 +15,20 @@ describe('ReportsService.consolidatedReport', () => {
     const scope = {
       allowedEmployeeIds: jest.fn().mockReturnValue(allowed),
     };
+    // Por defecto todo es un MES: expandir ciclos no cambia nada y el test se
+    // concentra en los filtros.
+    const periods = {
+      findWithParent: jest.fn().mockResolvedValue({ periodType: 'MONTH' }),
+      monthsOfCycle: jest.fn().mockResolvedValue([]),
+    };
     const service = new ReportsService(
       repo as never,
       scope as never,
       {} as never,
       {} as never,
+      periods as never,
     );
-    return { service, repo, scope };
+    return { service, repo, scope, periods };
   }
 
   const adminUser: AuthenticatedUser = {
@@ -50,6 +57,49 @@ describe('ReportsService.consolidatedReport', () => {
         allowedEmployeeIds: null,
       }),
     );
+  });
+
+  // Elegir un ciclo en Reportes devolvía SIEMPRE vacío: las liquidaciones
+  // mensuales se guardan contra el MES, así que filtrar por el id del ciclo no
+  // casaba con ninguna.
+  describe('un ciclo se expande a sus meses', () => {
+    function makeCycleService() {
+      const ctx = makeService(null);
+      ctx.periods.findWithParent.mockResolvedValue({ periodType: 'CYCLE' });
+      ctx.periods.monthsOfCycle.mockResolvedValue([
+        { periodId: 'm1' }, { periodId: 'm2' }, { periodId: 'm3' }, { periodId: 'm4' },
+      ]);
+      return ctx;
+    }
+
+    it('consulta los 4 meses, no solo el id del ciclo', async () => {
+      const { service, repo } = makeCycleService();
+      await service.consolidatedReport(adminUser, { periodId: 'ciclo1' });
+
+      const { periodIds } = repo.findHeaders.mock.calls[0][0];
+      expect(periodIds).toEqual(
+        expect.arrayContaining(['m1', 'm2', 'm3', 'm4']),
+      );
+    });
+
+    it('incluye también el ciclo: ahí vive el pago del 20% devengado', async () => {
+      // El cierre del ciclo se guarda contra el ciclo. Omitirlo dejaría fuera
+      // justamente la bolsa del 20% que ese consolidado debe mostrar.
+      const { service, repo } = makeCycleService();
+      await service.consolidatedReport(adminUser, { periodId: 'ciclo1' });
+
+      const { periodIds } = repo.findHeaders.mock.calls[0][0];
+      expect(periodIds).toContain('ciclo1');
+      expect(periodIds).toHaveLength(5);
+    });
+
+    it('un mes normal no arrastra periodos ajenos', async () => {
+      const { service, repo } = makeService(null); // findWithParent → MONTH
+      await service.consolidatedReport(adminUser, { periodId: 'm1' });
+
+      const { periodIds } = repo.findHeaders.mock.calls[0][0];
+      expect(periodIds).toEqual(['m1']);
+    });
   });
 
   it('pasa el alcance (allowedEmployeeIds) cuando el usuario no es ALL', async () => {
