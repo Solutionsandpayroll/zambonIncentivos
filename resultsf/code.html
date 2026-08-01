@@ -470,11 +470,24 @@
     var ipill = el('d-ideal-pill');
     if (ideal.achievementPercent == null) {
       ipill.textContent = A.DASH; ipill.className = 'z-pill z-pill--muted';
+      ipill.removeAttribute('title');
     } else {
       var pct = Math.round(ideal.achievementPercent * 100);
-      ipill.textContent = pct + '% del ideal';
+      // En un mes que acumula, el 20% no se pagó: el logro mide solo el 80% y
+      // la etiqueta lo dice. Llamarlo "del ideal" ahí seria mentir, porque el
+      // ideal que se muestra arriba es el del ciclo entero.
+      ipill.textContent = ideal.achievementExcludes20
+        ? pct + '% del 80%'
+        : pct + '% del ideal';
       ipill.className = 'z-pill ' + (ideal.achievementPercent >= 1 ? 'z-pill--active'
         : ideal.achievementPercent >= 0.8 ? 'z-pill--muted' : 'z-pill--error');
+      if (ideal.achievementExcludes20) {
+        ipill.title = 'El 20% se cobra al cierre del ciclo, así que este mes no '
+          + 'entra en el cálculo: el logro se mide sobre ' + A.money(ideal.achievementBase)
+          + ' (solo el 80%).';
+      } else {
+        ipill.removeAttribute('title');
+      }
     }
 
     // Detalle por componente

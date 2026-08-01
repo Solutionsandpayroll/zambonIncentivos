@@ -88,6 +88,9 @@
   .z-pill--muted { background: #333535; border: 1px solid #474834; color: #c8c8ae; }
   .z-pill--error { background: rgba(147,0,10,0.25); border: 1px solid rgba(255,180,171,0.3); color: #ffb4ab; }
   .z-pill--pulse::before { content: ""; width: 6px; height: 6px; border-radius: 9999px; background: currentColor; animation: z-pulse 1.4s ease-in-out infinite; }
+  /* Marca el logro que mide solo el 80% (el 20% va diferido al cierre del
+     ciclo). Hereda el color del porcentaje para no competir con él. */
+  .ach-only80 { display: inline-block; margin-left: 0.375rem; padding: 0 0.25rem; border: 1px solid currentColor; border-radius: 3px; font-family: Poppins; font-size: 9px; font-weight: 500; letter-spacing: 0.04em; opacity: 0.65; vertical-align: 1px; cursor: help; }
   @keyframes z-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
   .z-progress { height: 8px; width: 100%; background: #282a2b; border-radius: 9999px; overflow: hidden; }
   .z-progress__fill { height: 100%; background: #c3cd17; border-radius: 9999px; transform-origin: left; animation: z-grow 600ms var(--ease-out) both; }
@@ -433,8 +436,16 @@
     setText('sum-80', A.money(totals.total80));
     setText('sum-20', A.money(totals.total20));
     setText('sum-total', A.money(totals.totalIncentive));
+    // El logro del grupo se mide contra `totalAchievementBase`, que excluye el
+    // 20% de las filas que lo difieren. Cuando esa base no coincide con el
+    // ideal, se dice explícitamente sobre qué se calculó el porcentaje: si no,
+    // el lector divide total/ideal a ojo y no le da.
+    var base = totals.totalAchievementBase;
+    var parcial = base != null && totals.totalIdeal != null
+      && Math.round(base) !== Math.round(totals.totalIdeal);
     setText('sum-ideal', totals.totalIdeal
-      ? ('de ' + A.money(totals.totalIdeal) + ' ideal · ' + achievementText(totals.achievementPercent))
+      ? ('de ' + A.money(totals.totalIdeal) + ' ideal · ' + achievementText(totals.achievementPercent) +
+         (parcial ? ' sobre ' + A.money(base) + ' liquidable' : ''))
       : A.DASH);
     setText('table-count', rows.length + ' resultados');
     setText('rep-footer', 'Mostrando ' + rows.length + ' resultados');
@@ -460,7 +471,7 @@
         '<td class="py-3 px-2 text-right num-cell text-on-surface">' + A.money(r.component20) + '</td>' +
         '<td class="py-3 px-2 text-right num-cell text-on-surface font-semibold">' + A.money(r.totalIncentive) + '</td>' +
         '<td class="py-3 px-2 text-right num-cell text-on-surface-variant">' + A.money(r.idealTotal) + '</td>' +
-        '<td class="py-3 px-2 text-right num-cell ' + achievementClass(r.achievementPercent) + '">' + achievementText(r.achievementPercent) + '</td>' +
+        '<td class="py-3 px-2 text-right num-cell ' + achievementClass(r.achievementPercent) + '">' + achievementCell(r) + '</td>' +
         '<td class="py-3 px-2">' + estado + '</td>';
       body.appendChild(tr);
     });
@@ -469,6 +480,21 @@
   /** Texto del logro: '—' cuando no hay ideal contra el cual comparar. */
   function achievementText(v) {
     return v === null || v === undefined ? A.DASH : Math.round(v * 100) + '%';
+  }
+
+  /**
+   * Celda de logro. En los meses que acumulan, el 20% no se paga —se cobra al
+   * cerrar el ciclo— así que el porcentaje mide solo el 80%. La columna "Ideal"
+   * de al lado sigue mostrando el techo del ciclo completo, y sin este aviso
+   * las dos cifras parecen contradecirse: un 100% junto a un ideal que dobla
+   * el total pagado.
+   */
+  function achievementCell(r) {
+    var txt = achievementText(r.achievementPercent);
+    if (!r.achievementExcludes20 || r.achievementPercent == null) return txt;
+    return txt +
+      '<span class="ach-only80" title="El 20% se cobra al cierre del ciclo: este logro mide solo el 80% (' +
+      A.money(r.achievementBase) + ').">80%</span>';
   }
 
   /** Verde si alcanzó o superó el ideal, ámbar cerca, rojo lejos. */

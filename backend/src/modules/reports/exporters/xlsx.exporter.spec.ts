@@ -36,6 +36,28 @@ describe('XlsxExporter', () => {
     expect(buffer[1]).toBe(0x4b);
   });
 
+  it('marca la base del logro cuando la fila excluye el 20%', async () => {
+    // El archivo va a Nómina: un 100% junto a un ideal que dobla el total
+    // pagado necesita decir sobre qué se calculó, o se lee como un error.
+    const ExcelJS = require('exceljs');
+    const diferida: ReportRow[] = [
+      { ...rows[0], achievementBase: 744576, achievementExcludes20: true },
+    ];
+    const buffer = await exporter.generate('Consolidado', diferida, {
+      total80: 812340.5,
+      total20: 0,
+      totalIncentive: 812340.5,
+      totalIdeal: 1489152,
+      totalAchievementBase: 744576,
+    });
+
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(buffer);
+    const texto = JSON.stringify(wb.getWorksheet('Reporte').getSheetValues());
+    expect(texto).toContain('Base del logro');
+    expect(texto).toContain('744576 (solo 80%)');
+  });
+
   it('no falla con un conjunto de filas vacío', async () => {
     const buffer = await exporter.generate('Vacío', [], {
       total80: 0,

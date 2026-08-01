@@ -14,6 +14,7 @@ export class XlsxExporter {
       totalIncentive: number;
       totalIdeal?: number;
       achievementPercent?: number | null;
+      totalAchievementBase?: number;
     },
   ): Promise<Buffer> {
     const wb = new ExcelJS.Workbook();
@@ -39,6 +40,10 @@ export class XlsxExporter {
       'Total',
       'Ideal (100%)',
       'Logro',
+      // El logro de un mes que acumula mide solo el 80%. Sin esta columna, el
+      // archivo que llega a Nómina muestra un 100% junto a un ideal que dobla
+      // el total pagado, y no hay forma de saber por qué.
+      'Base del logro',
       'Estado',
     ];
     sheet.getRow(headerRow).font = { bold: true };
@@ -52,6 +57,7 @@ export class XlsxExporter {
       { key: 'totalIncentive', width: 16 },
       { key: 'idealTotal', width: 16 },
       { key: 'achievement', width: 10 },
+      { key: 'achievementBase', width: 22 },
       { key: 'status', width: 14 },
     ];
 
@@ -66,6 +72,9 @@ export class XlsxExporter {
         totalIncentive: r.totalIncentive,
         idealTotal: r.idealTotal,
         achievement: r.achievementPercent,
+        achievementBase: r.achievementExcludes20
+          ? `${r.achievementBase} (solo 80%)`
+          : r.achievementBase,
         status: r.guaranteedPayApplied ? 'Pago garantizado' : r.status,
       });
     }
@@ -78,6 +87,7 @@ export class XlsxExporter {
       totalIncentive: totals.totalIncentive,
       idealTotal: totals.totalIdeal,
       achievement: totals.achievementPercent,
+      achievementBase: totals.totalAchievementBase,
     });
     totalRow.font = { bold: true };
 
