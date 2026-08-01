@@ -10,8 +10,16 @@
 //   - Nada de auth/RLS de Supabase: esto es "un Postgres cualquiera".
 // ============================================================================
 
+// `output` explícito, no por defecto: el schema vive en `prisma/` (fuera de
+// `backend/`) y la RAÍZ también declara @prisma/client, así que sin esta línea
+// Prisma elige destino según qué node_modules resuelva primero. En un build
+// limpio autoinstala en backend/ y acierta; con caché de Render el paquete ya
+// existe, no reinstala, y genera en ../node_modules — dejando el de backend/
+// como stub. `nest build` compila contra ese stub y falla con ~47 errores de
+// tipos que no existen (PeriodType, Prisma.InputJsonValue, …).
 generator client {
   provider = "prisma-client-js"
+  output   = "../backend/node_modules/.prisma/client"
 }
 
 datasource db {
