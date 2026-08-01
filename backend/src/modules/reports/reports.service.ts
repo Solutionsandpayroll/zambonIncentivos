@@ -277,6 +277,10 @@ export class ReportsService {
     // El ideal se suma desde las filas ya mapeadas: cada una lo trae calculado
     // desde sus bolsas teóricas, así que no hace falta reagregarlo aparte.
     const totalIdeal = rows.reduce((a, r) => a + r.idealTotal, 0);
+    // El logro se divide entre las BASES, no entre los ideales: las filas que
+    // difieren el 20% no lo pagaron este periodo, así que incluirlo en el
+    // denominador hundiría el logro del grupo en los meses de acumulación.
+    const totalBase = rows.reduce((a, r) => a + r.achievementBase, 0);
     const totalIncentive = t.totalIncentive.toNumber();
 
     return {
@@ -287,7 +291,8 @@ export class ReportsService {
         total20: t.total20.toNumber(),
         totalIncentive,
         totalIdeal: Math.round(totalIdeal * 100) / 100,
-        achievementPercent: totalIdeal > 0 ? totalIncentive / totalIdeal : null,
+        totalAchievementBase: Math.round(totalBase * 100) / 100,
+        achievementPercent: totalBase > 0 ? totalIncentive / totalBase : null,
         guaranteedCount: t.guaranteedCount,
       },
     };

@@ -16,6 +16,8 @@ describe('XlsxExporter', () => {
       totalIncentive: 998484.5,
       idealTotal: 1489152,
       achievementPercent: 0.67,
+      achievementBase: 1489152,
+      achievementExcludes20: false,
       guaranteedPayApplied: false,
       calculationVersion: 2,
       status: 'CALCULATED',

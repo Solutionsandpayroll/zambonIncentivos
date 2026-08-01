@@ -1,5 +1,6 @@
 import {
   MONTHS_PER_CYCLE,
+  defers20ToCycle,
   execution20ModeFor,
   monthAchievementFraction,
   theoreticalMultiplierFor,
@@ -26,6 +27,24 @@ describe('execution-rules', () => {
 
     it('equipo normal, cierre de ciclo: cobra lo devengado', () => {
       expect(execution20ModeFor(false, 'CYCLE')).toBe('PAY_CYCLE');
+    });
+  });
+
+  // Sale del modo ACCRUE, y solo de él: es el único caso en que el 20% se
+  // registra pero no se paga, que es lo que el escenario ideal necesita saber
+  // para no medir el logro de un mes contra el ideal de un ciclo.
+  describe('defers20ToCycle', () => {
+    it('mes de un equipo que acumula: difiere', () => {
+      expect(defers20ToCycle(false, 'MONTH')).toBe(true);
+    });
+
+    it('cierre de ciclo: no difiere, ahí se paga', () => {
+      expect(defers20ToCycle(false, 'CYCLE')).toBe(false);
+    });
+
+    it('equipo mensual: nunca difiere, cobra cada mes', () => {
+      expect(defers20ToCycle(true, 'MONTH')).toBe(false);
+      expect(defers20ToCycle(true, 'CYCLE')).toBe(false);
     });
   });
 

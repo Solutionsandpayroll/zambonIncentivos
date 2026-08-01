@@ -58,6 +58,21 @@ export function theoreticalMultiplierFor(pays20Monthly: boolean): number {
 }
 
 /**
+ * ¿Este resultado difiere el 20% al cierre del ciclo?
+ *
+ * Es exactamente el modo `ACCRUE`: un mes de un equipo que acumula, donde el
+ * 20% se registra pero paga 0. Existe como función aparte porque el escenario
+ * ideal lo necesita para decidir el denominador del logro, y derivarlo allí a
+ * mano dejaría la regla escrita en dos sitios.
+ */
+export function defers20ToCycle(
+  pays20Monthly: boolean,
+  periodType: 'MONTH' | 'CYCLE',
+): boolean {
+  return execution20ModeFor(pays20Monthly, periodType) === 'ACCRUE';
+}
+
+/**
  * Cuánto de la bolsa del 20% gana un mes: 0, 0.5 o 1.
  *
  * Casi todos los meses se miden con UN KPI y el mes es todo o nada. Pero hay

@@ -16,6 +16,17 @@
  *  cumpliendo todo— y por eso es comparable entre personas y entre periodos.
  *  Si respetara las excepciones, dos personas con el mismo cargo tendrían
  *  "ideales" distintos y la comparación dejaría de significar nada.
+ *
+ *  ── Sobre el porcentaje de logro ───────────────────────────────────────────
+ *  `idealTotal` es el techo del CICLO, pero en los meses de acumulación el
+ *  pago del 20% es 0: se registra el cumplimiento y se cobra al cierre. Medir
+ *  ahí el logro contra el ideal completo dividía el pago de UN mes entre el
+ *  ideal de CUATRO, y quien cumplía el 100% aparecía con ~50%.
+ *
+ *  Por eso el logro se mide solo contra la parte comparable: en un mes que
+ *  acumula, contra `ideal80` —lo único que ese mes podía pagar—. El 20%
+ *  devengado no se pierde: se reporta aparte y entra en el logro del cierre
+ *  de ciclo, donde numerador y denominador vuelven a hablar de lo mismo.
  * ============================================================================
  */
 
@@ -26,6 +37,15 @@ export interface IdealScenarioInput {
   component20Theoretical: number;
   /** 4 por ciclo, 1 para los equipos que cobran el 20% mensual. */
   executionCycleMultiplier: number;
+  /**
+   * ¿Este resultado difiere el 20% al cierre del ciclo? True en los meses de
+   * un equipo que acumula. Cuando lo es, el 20% no entra en el denominador del
+   * logro porque tampoco entró en el numerador.
+   *
+   * Por defecto false: sin el dato, el logro se mide contra el ideal completo,
+   * que es el comportamiento de un cierre de ciclo o de un equipo mensual.
+   */
+  defers20ToCycle?: boolean;
 }
 
 export interface IdealScenario {
@@ -33,10 +53,21 @@ export interface IdealScenario {
   ideal80: number;
   /** 20% si cumpliera el KPI de ejecución. */
   ideal20: number;
-  /** Total del escenario ideal. */
+  /** Total del escenario ideal: el techo contractual del ciclo. */
   idealTotal: number;
-  /** Qué fracción del ideal se alcanzó (0..n). `null` si el ideal es 0. */
+  /**
+   * Base contra la que se midió el logro. Igual a `idealTotal`, salvo en los
+   * meses que difieren el 20%, donde es solo `ideal80`. Se expone para que un
+   * reporte pueda explicar el porcentaje en vez de dejarlo sin contexto.
+   */
+  achievementBase: number;
+  /** Qué fracción de `achievementBase` se alcanzó (0..n). `null` si la base es 0. */
   achievementPercent: number | null;
+  /**
+   * ¿El logro excluye el 20% por estar diferido? Permite a la UI marcar el
+   * porcentaje como "solo 80%" y evitar que se lea como el logro del ciclo.
+   */
+  achievementExcludes20: boolean;
 }
 
 /** Redondeo a centavos, igual que el motor. */
@@ -52,12 +83,19 @@ export function computeIdealScenario(
   );
   const idealTotal = money(ideal80 + ideal20);
 
+  // El techo contractual no cambia; lo que cambia es contra qué se mide. Si el
+  // 20% se difiere, este resultado no pudo pagarlo y sale del denominador.
+  const achievementExcludes20 = input.defers20ToCycle === true;
+  const achievementBase = achievementExcludes20 ? ideal80 : idealTotal;
+
   return {
     ideal80,
     ideal20,
     idealTotal,
-    // Sin ideal no hay porcentaje que calcular: devolver 0 sugeriría "no logró
+    achievementBase,
+    achievementExcludes20,
+    // Sin base no hay porcentaje que calcular: devolver 0 sugeriría "no logró
     // nada" cuando en realidad no hay contra qué comparar.
-    achievementPercent: idealTotal > 0 ? actualTotal / idealTotal : null,
+    achievementPercent: achievementBase > 0 ? actualTotal / achievementBase : null,
   };
 }

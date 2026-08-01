@@ -16,6 +16,8 @@ describe('PdfExporter', () => {
       totalIncentive: 1462560,
       idealTotal: 1489152,
       achievementPercent: 0.67,
+      achievementBase: 1489152,
+      achievementExcludes20: false,
       guaranteedPayApplied: false,
       calculationVersion: 1,
       status: 'CALCULATED',

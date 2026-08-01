@@ -1,6 +1,9 @@
 import { Decimal } from '@prisma/client/runtime/library';
 import { computeIdealScenario } from '../incentives/domain/ideal-scenario';
-import { theoreticalMultiplierFor } from '../incentives/domain/execution-rules';
+import {
+  defers20ToCycle,
+  theoreticalMultiplierFor,
+} from '../incentives/domain/execution-rules';
 
 /** Mappers entidad Prisma → filas de reporte. Entrada laxa (el include garantiza relaciones). */
 
@@ -24,6 +27,10 @@ export function toReportRow(h: any) {
       component80Theoretical: num(h.component80Theoretical),
       component20Theoretical: num(h.component20Theoretical),
       executionCycleMultiplier: theoreticalMultiplierFor(h.executionPayMonthly ?? false),
+      defers20ToCycle: defers20ToCycle(
+        h.executionPayMonthly ?? false,
+        h.period?.periodType ?? 'MONTH',
+      ),
     },
     totalIncentive,
   );
@@ -44,6 +51,10 @@ export function toReportRow(h: any) {
     totalIncentive,
     idealTotal: ideal.idealTotal,
     achievementPercent: ideal.achievementPercent,
+    // El logro de un mes que acumula mide solo el 80%: sin estas dos columnas
+    // el porcentaje se leería como logro del ciclo y no lo es.
+    achievementBase: ideal.achievementBase,
+    achievementExcludes20: ideal.achievementExcludes20,
     guaranteedPayApplied: h.guaranteedPayApplied,
     calculationVersion: h.calculationVersion,
     status: h.calculationStatus,
@@ -78,6 +89,10 @@ export function toEmployeeReport(h: any) {
         component80Theoretical: num(h.component80Theoretical),
         component20Theoretical: num(h.component20Theoretical),
         executionCycleMultiplier: theoreticalMultiplierFor(h.executionPayMonthly ?? false),
+        defers20ToCycle: defers20ToCycle(
+          h.executionPayMonthly ?? false,
+          h.period?.periodType ?? 'MONTH',
+        ),
       },
       num(h.totalIncentive),
     ),

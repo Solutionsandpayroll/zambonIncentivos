@@ -11,8 +11,12 @@ export interface ReportRow {
   totalIncentive: number;
   /** Lo que ganaría cumpliendo el 100% (ver domain/ideal-scenario). */
   idealTotal: number;
-  /** Fracción del ideal alcanzada; `null` si no hay ideal contra el cual medir. */
+  /** Fracción de `achievementBase` alcanzada; `null` si no hay base contra la cual medir. */
   achievementPercent: number | null;
+  /** Base del logro: `idealTotal`, o solo el 80% cuando el 20% va diferido. */
+  achievementBase: number;
+  /** True si el logro mide solo el 80% porque el 20% se cobra al cierre del ciclo. */
+  achievementExcludes20: boolean;
   guaranteedPayApplied: boolean;
   calculationVersion: number;
   status: string;
@@ -26,7 +30,12 @@ export interface ReportTotals {
   totalIncentive: number;
   /** Suma de los ideales: el techo del grupo. */
   totalIdeal: number;
-  /** Logro del grupo = totalIncentive / totalIdeal. */
+  /**
+   * Suma de las bases de logro. Difiere de `totalIdeal` cuando hay filas con el
+   * 20% diferido, y es el denominador correcto del logro del grupo.
+   */
+  totalAchievementBase: number;
+  /** Logro del grupo = totalIncentive / totalAchievementBase. */
   achievementPercent: number | null;
   guaranteedCount: number;
 }

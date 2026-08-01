@@ -1,6 +1,9 @@
 import { Decimal } from '@prisma/client/runtime/library';
 import { computeIdealScenario } from '../incentives/domain/ideal-scenario';
-import { theoreticalMultiplierFor } from '../incentives/domain/execution-rules';
+import {
+  defers20ToCycle,
+  theoreticalMultiplierFor,
+} from '../incentives/domain/execution-rules';
 
 /**
  * Mappers de entidad Prisma → forma de respuesta del contrato (API.md §7).
@@ -83,6 +86,10 @@ export function toResultDetail(h: any) {
         component80Theoretical: num(h.component80Theoretical),
         component20Theoretical: num(h.component20Theoretical),
         executionCycleMultiplier: theoreticalMultiplierFor(h.executionPayMonthly ?? false),
+        defers20ToCycle: defers20ToCycle(
+          h.executionPayMonthly ?? false,
+          h.period?.periodType ?? 'MONTH',
+        ),
       },
       num(h.totalIncentive),
     ),
