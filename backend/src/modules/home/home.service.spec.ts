@@ -19,6 +19,7 @@ describe('HomeService', () => {
     const prisma = {
       period: {
         findFirst: jest.fn().mockResolvedValue(activePeriod),
+        findMany: jest.fn().mockResolvedValue([activePeriod]),
         count: jest.fn().mockResolvedValue(2),
       },
       salesUploadBatch: { count: jest.fn().mockResolvedValue(0) },
@@ -100,7 +101,7 @@ describe('HomeService', () => {
 
   it('maneja la ausencia de periodo activo sin romper', async () => {
     const { service } = makeService({
-      period: { findFirst: jest.fn().mockResolvedValue(null), count: jest.fn().mockResolvedValue(0) },
+      period: { findFirst: jest.fn().mockResolvedValue(null), findMany: jest.fn().mockResolvedValue([]), count: jest.fn().mockResolvedValue(0) },
     });
     const res: any = await service.summary(
       user([AppRole.NOMINA], ScopeType.ALL, null),

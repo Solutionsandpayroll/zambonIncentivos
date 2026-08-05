@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import PDFDocument from 'pdfkit';
+import * as path from 'path';
+import * as fs from 'fs';
 import { ReportRow } from '../reports.types';
+
+const LOGO_PATH = path.resolve(process.cwd(), '../shared/Logo-zambon.png');
 
 /**
  * Exportador PDF con pdfkit (sin navegador ni dependencias nativas). Genera un
@@ -35,7 +39,15 @@ export class PdfExporter {
     rows: ReportRow[],
     totals: { total80: number; total20: number; totalIncentive: number },
   ): void {
-    // Encabezado
+    // Logo
+    const logoY = doc.y;
+    if (fs.existsSync(LOGO_PATH)) {
+      doc.image(LOGO_PATH, 36, logoY, { height: 32 });
+    }
+
+    // Encabezado — empujado debajo del logo si hay
+    const titleY = fs.existsSync(LOGO_PATH) ? logoY + 40 : logoY;
+    doc.y = titleY;
     doc.fontSize(16).fillColor('#111111').text(title, { align: 'left' });
     doc
       .fontSize(9)

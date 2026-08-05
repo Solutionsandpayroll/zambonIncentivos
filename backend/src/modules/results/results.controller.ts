@@ -35,7 +35,7 @@ export class ResultsController {
   }
 
   @Get(':headerId/versions')
-  @Roles(AppRole.ADMIN, AppRole.NOMINA)
+  @Roles(AppRole.ADMIN, AppRole.NOMINA, AppRole.GERENTE, AppRole.COORDINADOR)
   versions(
     @CurrentUser() user: AuthenticatedUser,
     @Param('headerId') headerId: string,

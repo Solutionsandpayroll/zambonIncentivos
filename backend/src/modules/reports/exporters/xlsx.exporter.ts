@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
+import * as path from 'path';
+import * as fs from 'fs';
 import { ReportRow } from '../reports.types';
+
+const LOGO_PATH = path.resolve(process.cwd(), '../shared/Logo-zambon.png');
 
 /** Genera un archivo Excel a partir de las filas consolidadas de un reporte. */
 @Injectable()
@@ -23,13 +27,21 @@ export class XlsxExporter {
 
     const sheet = wb.addWorksheet('Reporte');
 
+    // Logo
+    let firstRow = 1;
+    if (fs.existsSync(LOGO_PATH)) {
+      const logoImageId = wb.addImage({ filename: LOGO_PATH, extension: 'png' });
+      sheet.addImage(logoImageId, { tl: { col: 0, row: 0 }, ext: { width: 140, height: 40 } });
+      firstRow = 3;
+    }
+
     // Encabezado del reporte
-    sheet.mergeCells('A1', 'J1');
-    sheet.getCell('A1').value = title;
-    sheet.getCell('A1').font = { bold: true, size: 14 };
+    sheet.mergeCells(`A${firstRow}`, `J${firstRow}`);
+    sheet.getCell(`A${firstRow}`).value = title;
+    sheet.getCell(`A${firstRow}`).font = { bold: true, size: 14 };
 
     // Columnas
-    const headerRow = 3;
+    const headerRow = firstRow + 2;
     sheet.getRow(headerRow).values = [
       'Cédula',
       'Empleado',

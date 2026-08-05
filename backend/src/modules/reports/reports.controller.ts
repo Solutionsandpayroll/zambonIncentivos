@@ -39,7 +39,7 @@ export class ReportsController {
   }
 
   @Get('consolidated')
-  @Roles(AppRole.ADMIN, AppRole.NOMINA)
+  @Roles(AppRole.ADMIN, AppRole.NOMINA, AppRole.GERENTE, AppRole.COORDINADOR)
   consolidated(
     @CurrentUser() user: AuthenticatedUser,
     @Query('periodId') periodId: string,

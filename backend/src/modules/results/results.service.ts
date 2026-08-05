@@ -30,6 +30,7 @@ export class ResultsService {
         ...(filters.teamId ? { teamId: filters.teamId } : {}),
         ...(filters.employeeId ? { employeeId: filters.employeeId } : {}),
       },
+      distinct: ['employeeId', 'periodId'],
       include: {
         employee: { include: { person: true } },
         team: true,

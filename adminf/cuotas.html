@@ -1,9 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 
 <html class="dark" lang="es"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Zambon - Admin · Cuotas</title>
+<link rel="icon" type="image/png" href="../shared/icon-zambon.png" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
@@ -158,9 +159,8 @@
 <body class="bg-background text-on-surface font-['Poppins'] antialiased min-h-screen flex">
 <!-- ===== Sidebar principal — Admin activo ===== -->
 <aside class="z-sidebar hidden md:flex">
-<div class="px-6 mb-10">
-<h1 class="text-xl font-black tracking-tighter text-primary-container font-['Poppins']">Zambon</h1>
-<p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Motor de Incentivos</p>
+<div class="px-6 mb-4">
+<img src="../shared/Logo-zambon.png" alt="Zambon" class="h-[60px] w-auto" />
 </div>
 <nav class="flex-1 flex flex-col gap-1">
 <a class="z-nav-item" href="../home/code.html"><span class="material-symbols-outlined">dashboard</span>Inicio</a>
@@ -311,6 +311,7 @@
     try {
       var teams = await A.get('/teams');
       teams.forEach(function (t) { var o = document.createElement('option'); o.value = t.teamId; o.textContent = t.teamName; el('sel-team').appendChild(o); });
+      var o = document.createElement('option'); o.value = '__none__'; o.textContent = 'Sin equipo'; el('sel-team').appendChild(o);
     } catch (e) {}
     // Los componentes se leen de los PESOS del equipo, no del catálogo global:
     // cada equipo mide 2 o 3 productos, y mostrar los 12 invita a cargar una
@@ -393,19 +394,25 @@
     body.innerHTML = '<tr><td colspan="4" class="py-4 text-center text-on-surface-variant text-sm">Cargando…</td></tr>';
 
     try {
-      // Componentes del equipo en este periodo (sus pesos), no el catálogo
-      // completo: cada equipo mide solo 2 o 3 productos.
-      var weights = await A.get(
-        '/component-weights?teamId=' + encodeURIComponent(state.teamId) +
-        '&periodId=' + encodeURIComponent(state.periodId),
-      );
-      state.components = (weights || []).map(function (w) {
-        return {
-          componentId: w.componentId,
-          componentName: w.component ? w.component.componentName : w.componentId,
-          weightPercent: Number(w.weightPercent),
-        };
-      });
+      // Componentes: si es "Sin equipo" se cargan todos los activos.
+      if (state.teamId === '__none__') {
+        var allComps = await A.get('/components');
+        state.components = (allComps || []).map(function (c) {
+          return { componentId: c.componentId, componentName: c.componentName, weightPercent: 0 };
+        });
+      } else {
+        var weights = await A.get(
+          '/component-weights?teamId=' + encodeURIComponent(state.teamId) +
+          '&periodId=' + encodeURIComponent(state.periodId),
+        );
+        state.components = (weights || []).map(function (w) {
+          return {
+            componentId: w.componentId,
+            componentName: w.component ? w.component.componentName : w.componentId,
+            weightPercent: Number(w.weightPercent),
+          };
+        });
+      }
 
       if (!state.components.length) {
         head.innerHTML = '';
@@ -428,13 +435,16 @@
             '<span class="col-weight">' + Math.round(c.weightPercent * 100) + '%</span></th>';
         }).join('');
 
-      var emps = await A.get('/employees?teamId=' + encodeURIComponent(state.teamId));
+      var empQuery = state.teamId === '__none__'
+        ? '/employees?withoutTeam=true'
+        : '/employees?teamId=' + encodeURIComponent(state.teamId);
+      var emps = await A.get(empQuery);
       var targets = await A.get('/targets?periodId=' + encodeURIComponent(state.periodId));
       // índice cuota por (empleado|componente)
       var qByKey = {};
       (targets || []).forEach(function (t) { qByKey[t.employeeId + '|' + t.componentId] = Number(t.quotaValue); });
 
-      var teamLabel = el('sel-team').options[el('sel-team').selectedIndex].textContent;
+      var teamLabel = state.teamId === '__none__' ? 'Sin equipo' : el('sel-team').options[el('sel-team').selectedIndex].textContent;
       var perLabel = el('sel-period').options[el('sel-period').selectedIndex].textContent;
       el('tbl-title').textContent = 'Cuotas · ' + teamLabel + ' · ' + perLabel;
 

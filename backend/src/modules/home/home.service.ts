@@ -20,11 +20,7 @@ export class HomeService {
     const isStaff =
       user.roles.includes(AppRole.ADMIN) || user.roles.includes(AppRole.NOMINA);
 
-    // Periodo activo (el más reciente abierto).
-    const activePeriod = await this.prisma.period.findFirst({
-      where: { isClosed: false, periodType: 'MONTH' },
-      orderBy: [{ periodYear: 'desc' }, { periodMonth: 'desc' }],
-    });
+    const activePeriod = await this.resolveActivePeriod();
 
     const base = {
       role: user.roles[0] ?? null,
@@ -42,6 +38,31 @@ export class HomeService {
     return isStaff
       ? { ...base, ...(await this.staffSummary(activePeriod?.periodId)) }
       : { ...base, ...(await this.employeeSummary(user, activePeriod?.periodId)) };
+  }
+
+  /**
+   * Determina el periodo activo: el primer mes abierto que aún no tiene
+   * liquidaciones. Si todos los meses abiertos ya están liquidados, devuelve
+   * el más reciente. Así el tablero siempre señala "lo que toca hacer ahora"
+   * en lugar de mostrar el último mes del año en ceros.
+   */
+  private async resolveActivePeriod() {
+    const openMonths = await this.prisma.period.findMany({
+      where: { isClosed: false, periodType: 'MONTH' },
+      orderBy: [{ periodYear: 'asc' }, { periodMonth: 'asc' }],
+      select: { periodId: true, periodYear: true, periodMonth: true, periodType: true },
+    });
+
+    if (!openMonths.length) return null;
+
+    for (const month of openMonths) {
+      const count = await this.prisma.incentiveCalculationHeader.count({
+        where: { periodId: month.periodId },
+      });
+      if (count === 0) return month;
+    }
+
+    return openMonths[openMonths.length - 1];
   }
 
   /** Tarjetas para ADMIN / NÓMINA: estado global de periodos, cargas y cálculos. */
@@ -86,11 +107,7 @@ export class HomeService {
    */
   async teamProgressFor(periodId?: string) {
     if (periodId) return this.teamProgress(periodId);
-    const active = await this.prisma.period.findFirst({
-      where: { isClosed: false, periodType: 'MONTH' },
-      orderBy: [{ periodYear: 'desc' }, { periodMonth: 'desc' }],
-      select: { periodId: true },
-    });
+    const active = await this.resolveActivePeriod();
     return this.teamProgress(active?.periodId);
   }
 

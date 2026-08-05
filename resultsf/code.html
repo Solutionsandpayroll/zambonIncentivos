@@ -1,9 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 
 <html class="dark" lang="es"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Zambon - Resultados</title>
+<link rel="icon" type="image/png" href="../shared/icon-zambon.png" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
@@ -123,15 +124,20 @@
   .emp-row:hover { background: rgba(255,255,255,0.04); }
   .emp-row--active { background: rgba(195,205,23,0.10); border-color: rgba(195,205,23,0.25); }
   .emp-row--active .emp-row__name { color: #c3cd17; }
+  .z-download-dropdown { transition: opacity 150ms ease, transform 150ms ease; }
+  .z-download-dropdown:not(.hidden) { opacity: 1; transform: translateY(0); }
+  .z-download-dropdown.hidden { opacity: 0; transform: translateY(-4px); pointer-events: none; }
+  .z-download-opt { border-radius: 0; }
+  .z-download-opt:first-child { border-radius: 0.75rem 0.75rem 0 0; }
+  .z-download-opt:last-child { border-radius: 0 0 0.75rem 0.75rem; }
   .num-cell { font-family: 'JetBrains Mono'; font-variant-numeric: tabular-nums; }
 </style>
 </head>
 <body class="bg-background text-on-surface font-['Poppins'] antialiased min-h-screen flex">
 <!-- ===== Sidebar — español, Resultados activo ===== -->
 <aside class="z-sidebar hidden md:flex">
-<div class="px-6 mb-10">
-<h1 class="text-xl font-black tracking-tighter text-primary-container font-['Poppins']">Zambon</h1>
-<p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Motor de Incentivos</p>
+<div class="px-6 mb-4">
+<img src="../shared/Logo-zambon.png" alt="Zambon" class="h-[60px] w-auto" />
 </div>
 <nav class="flex-1 flex flex-col gap-1">
 <a class="z-nav-item" href="../home/code.html"><span class="material-symbols-outlined">dashboard</span>Inicio</a>
@@ -206,6 +212,15 @@
 <!-- Panel de detalle (poblado por JS desde GET /results/:headerId) -->
 <div id="detail-panel" class="hidden flex-col gap-6">
 
+<!-- Loader mientras se carga el detalle -->
+<div id="detail-loading" class="glass-card rounded-xl p-12 flex flex-col items-center justify-center gap-4 text-on-surface-variant">
+<span class="material-symbols-outlined text-[36px] animate-spin">progress_activity</span>
+<p class="text-sm">Cargando liquidación…</p>
+</div>
+
+<!-- Contenido del detalle -->
+<div id="detail-content" class="flex-col gap-6 hidden">
+
 <!-- Cabecera de identidad + acción -->
 <div class="glass-card rounded-xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 z-rise z-rise-2">
 <div class="flex items-center gap-4">
@@ -218,7 +233,10 @@
 <p id="d-meta" class="text-label-sm text-on-surface-variant mono mt-0.5">—</p>
 </div>
 </div>
-<button id="d-download" class="z-btn z-btn--secondary"><span class="material-symbols-outlined text-[18px]">download</span>Descargar soporte</button>
+<button id="d-download" class="z-btn z-btn--secondary">
+  <span class="material-symbols-outlined text-[18px]">download</span>Descargar
+  <span class="material-symbols-outlined text-[14px]">arrow_drop_down</span>
+</button>
 </div>
 
 <!-- Resumen de totales (incentive_calculation_header) -->
@@ -233,9 +251,10 @@
 <p id="d-80-sub" class="text-[11px] text-on-surface-variant mt-1">—</p>
 </div>
 <div class="glass-card rounded-xl p-5">
-<div class="flex items-center justify-between"><p class="text-label-sm text-on-surface-variant">Componente 20%</p><span id="d-20-pill" class="z-pill z-pill--muted">—</span></div>
+<p class="text-label-sm text-on-surface-variant">Componente 20%</p>
 <p id="d-20" class="num-cell text-headline-md text-on-surface mt-1">—</p>
 <p id="d-20-sub" class="text-[11px] text-on-surface-variant mt-1">—</p>
+<span id="d-20-pill" class="z-pill z-pill--muted" style="display:inline-flex;margin-top:6px">—</span>
 </div>
 <div class="glass-card rounded-xl p-5 glow-lime border-primary-container/20">
 <p class="text-label-sm text-on-surface-variant">Total liquidado</p>
@@ -245,9 +264,10 @@
 <!-- Escenario ideal: el techo contractual de la persona, cumpliendo el 100%
      del 80% y el 100% del 20%. No descuenta ni premia excepciones. -->
 <div class="glass-card rounded-xl p-5">
-<div class="flex items-center justify-between"><p class="text-label-sm text-on-surface-variant">Si cumpliera el 100%</p><span id="d-ideal-pill" class="z-pill z-pill--muted">—</span></div>
+<p class="text-label-sm text-on-surface-variant">Si cumpliera el 100%</p>
 <p id="d-ideal" class="num-cell text-headline-md text-on-surface mt-1">—</p>
 <p id="d-ideal-sub" class="text-[11px] text-on-surface-variant mt-1">—</p>
+<span id="d-ideal-pill" class="z-pill z-pill--muted" style="display:inline-flex;margin-top:6px">—</span>
 </div>
 </div>
 
@@ -308,6 +328,7 @@
 </div>
 </div>
 
+</div>
 </div>
 </section>
 </div>
@@ -418,12 +439,18 @@
       n.classList.toggle('emp-row--active', n.dataset.id === headerId);
     });
     hide('detail-empty');
+    // Mostrar el panel con loader, ocultar contenido previo
+    var panel = el('detail-panel');
+    panel.classList.remove('hidden');
+    panel.classList.add('flex', 'flex-col');
+    show('detail-loading');
+    hide('detail-content');
     try {
       var d = await A.get('/results/' + encodeURIComponent(headerId));
       state.detail = d;
       renderDetail(d);
-      el('detail-panel').classList.remove('hidden');
-      el('detail-panel').classList.add('flex');
+      hide('detail-loading');
+      show('detail-content');
     } catch (e) {
       el('detail-panel').classList.add('hidden');
       show('detail-empty');
@@ -531,9 +558,16 @@
     // Versiones
     loadVersions(d.headerId);
 
-    // Descargar soporte (export XLSX individual)
-    var dl = el('d-download');
-    dl.onclick = function () { downloadSupport(emp, per); };
+    // Descargar soporte (dropdown Excel / PDF)
+    el('d-download').onclick = function (e) { e.stopPropagation(); toggleDownloadDropdown(); };
+    var opts = document.querySelectorAll('.z-download-opt');
+    opts.forEach(function (opt) {
+      opt.onclick = function (e) {
+        e.stopPropagation();
+        downloadSupport(emp, per, opt.dataset.format);
+        el('d-dropdown').classList.add('hidden');
+      };
+    });
   }
 
   async function loadVersions(headerId) {
@@ -558,12 +592,11 @@
     }
   }
 
-  // Descarga el soporte individual del empleado (POST /reports/export, XLSX).
-  async function downloadSupport(emp, per) {
+  // Descarga el soporte individual del empleado (POST /reports/export).
+  async function downloadSupport(emp, per, format) {
+    format = format || 'XLSX';
+    var ext = format === 'PDF' ? '.pdf' : '.xlsx';
     if (!state.selectedId) return;
-    // El backend exige employeeId para type=EMPLOYEE (400 si falta). Ambos ids
-    // vienen del detalle cargado, así que no dependen del filtro de la pantalla:
-    // un empleado que ve su propia liquidación no tiene por qué elegir periodo.
     var employeeId = state.detail && state.detail.employee && state.detail.employee.employeeId;
     var periodId = (state.detail && state.detail.period && state.detail.period.periodId) || state.periodId;
 
@@ -582,13 +615,11 @@
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + A.getToken() },
         body: JSON.stringify({
           type: 'EMPLOYEE',
-          format: 'XLSX',
+          format: format,
           filters: { periodId: periodId, employeeId: employeeId },
         }),
       });
       if (!res.ok) {
-        // El backend explica el motivo real (403 fuera de alcance, 400 datos
-        // faltantes): mostrarlo evita el "no se pudo" opaco de antes.
         var msg = 'No se pudo generar el soporte.';
         try { var j = await res.json(); if (j && j.message) msg = j.message; } catch (_) {}
         throw new Error(msg);
@@ -598,7 +629,7 @@
       var a = document.createElement('a');
       var doc = (emp && emp.documentNumber) || 'empleado';
       var lbl = per ? (per.year + '-' + String(per.month).padStart(2, '0')) : 'periodo';
-      a.href = url; a.download = 'soporte-' + doc + '-' + lbl + '.xlsx'; a.click();
+      a.href = url; a.download = 'soporte-' + doc + '-' + lbl + ext; a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
       A.toast(e.message || 'No se pudo generar el soporte.', 'error');
@@ -607,6 +638,25 @@
       btn.innerHTML = prev;
     }
   }
+
+  // Dropdown de descarga: abre/cierra junto al botón (position:fixed, fuera de stacking contexts).
+  window.toggleDownloadDropdown = function () {
+    var dd = el('d-dropdown');
+    var btn = el('d-download');
+    if (dd.classList.contains('hidden')) {
+      var rect = btn.getBoundingClientRect();
+      dd.style.top = (rect.bottom + 4) + 'px';
+      dd.style.right = (window.innerWidth - rect.right) + 'px';
+    }
+    dd.classList.toggle('hidden');
+  };
+  document.addEventListener('click', function (e) {
+    var dd = el('d-dropdown');
+    var btn = el('d-download');
+    if (dd && btn && !dd.classList.contains('hidden') && !btn.contains(e.target) && !dd.contains(e.target)) {
+      dd.classList.add('hidden');
+    }
+  });
 
   // ---- Eventos de filtro ----
   var periodFilter = el('filter-period');
@@ -633,4 +683,12 @@
   })();
 })();
 </script>
+<div id="d-dropdown" class="z-download-dropdown hidden fixed w-40 bg-surface-container border border-white/5 rounded-xl shadow-lg py-1" style="z-index:1400">
+  <button class="z-download-opt w-full text-left px-4 py-2.5 text-sm text-on-surface hover:bg-white/5 flex items-center gap-2 transition-colors" data-format="XLSX">
+    <span class="material-symbols-outlined text-[16px] text-primary-container">table</span>Excel
+  </button>
+  <button class="z-download-opt w-full text-left px-4 py-2.5 text-sm text-on-surface hover:bg-white/5 flex items-center gap-2 transition-colors" data-format="PDF">
+    <span class="material-symbols-outlined text-[16px] text-primary-container">picture_as_pdf</span>PDF
+  </button>
+</div>
 </body></html>
