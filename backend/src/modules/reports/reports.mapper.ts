@@ -35,6 +35,13 @@ export function toReportRow(h: any) {
     totalIncentive,
   );
 
+  // Detalle por componente (solo si el header trae los detalles cargados).
+  const componentDetails = h.details?.map((d: any) => ({
+    componentName: d.component?.componentName ?? d.component?.componentCode ?? d.componentId,
+    compliancePercent: num(d.compliancePercent),
+    componentIncentiveValue: num(d.componentIncentiveValue),
+  }));
+
   return {
     employeeId: h.employeeId,
     documentNumber: h.employee.person.documentNumber,
@@ -58,6 +65,7 @@ export function toReportRow(h: any) {
     guaranteedPayApplied: h.guaranteedPayApplied,
     calculationVersion: h.calculationVersion,
     status: h.calculationStatus,
+    componentDetails,
   };
 }
 

@@ -80,6 +80,21 @@ export class ReportsRepository {
     });
   }
 
+  /**
+   * Detalle por componente buscando en múltiples periodos (para el reporte
+   * individual cuando el periodo puede ser un ciclo que abarca varios meses).
+   */
+  findHeaderWithDetailsAndPeriods(employeeId: string, periodIds: string[]) {
+    return this.prisma.incentiveCalculationHeader.findFirst({
+      where: { employeeId, periodId: { in: periodIds } },
+      orderBy: { calculationVersion: 'desc' },
+      include: {
+        ...HEADER_INCLUDE,
+        details: { include: { component: true } },
+      },
+    });
+  }
+
   teamExists(teamId: string) {
     return this.prisma.team.findUnique({
       where: { teamId },

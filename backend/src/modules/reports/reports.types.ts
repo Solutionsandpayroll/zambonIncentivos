@@ -1,3 +1,10 @@
+/** Detalle de un componente en el cálculo del 80%. */
+export interface ComponentDetail {
+  componentName: string;
+  compliancePercent: number;
+  componentIncentiveValue: number;
+}
+
 /** Fila de tabla consolidada usada por reportes y exportadores. */
 export interface ReportRow {
   employeeId: string;
@@ -20,6 +27,8 @@ export interface ReportRow {
   guaranteedPayApplied: boolean;
   calculationVersion: number;
   status: string;
+  /** Detalle por componente (solo en reportes individuales). */
+  componentDetails?: ComponentDetail[];
 }
 
 /** Totales agregados de un conjunto de filas. */

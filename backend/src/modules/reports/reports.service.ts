@@ -136,11 +136,9 @@ export class ReportsService {
         if (!employeeId) {
           throw new BadRequestException('El reporte EMPLOYEE requiere employeeId');
         }
-        report = await this.buildConsolidated(user, {
-          periodId: singlePeriodId,
-          ...(multi ? { periodIds } : {}),
-          employeeId,
-        });
+        // Para el reporte individual, cargamos los detalles por componente
+        // para que el PDF pueda mostrar el desglose del 80%.
+        report = await this.buildEmployeeReport(user, employeeId, singlePeriodId);
         title = `Reporte individual de incentivos · ${periodLabel}`;
         break;
       }
@@ -294,6 +292,42 @@ export class ReportsService {
         totalAchievementBase: Math.round(totalBase * 100) / 100,
         achievementPercent: totalBase > 0 ? totalIncentive / totalBase : null,
         guaranteedCount: t.guaranteedCount,
+      },
+    };
+  }
+
+  /**
+   * Reporte individual con detalle por componente (para el desglose del 80% en PDF).
+   */
+  private async buildEmployeeReport(
+    user: AuthenticatedUser,
+    employeeId: string,
+    periodId: string,
+  ): Promise<ConsolidatedReport> {
+    this.scope.assertCanAccessEmployee(user, employeeId);
+
+    // Expandir ciclos: si periodId es un ciclo, buscar en sus meses.
+    const periodIds = await this.expandCycles([periodId]);
+
+    // Buscar el header con detalles (última versión).
+    const header = await this.repo.findHeaderWithDetailsAndPeriods(employeeId, periodIds);
+    if (!header) {
+      throw new NotFoundException('Sin liquidación para ese empleado/periodo');
+    }
+
+    const row = toReportRow(header);
+
+    return {
+      rows: [row],
+      totals: {
+        employeeCount: 1,
+        total80: row.component80,
+        total20: row.component20,
+        totalIncentive: row.totalIncentive,
+        totalIdeal: row.idealTotal,
+        totalAchievementBase: row.achievementBase,
+        achievementPercent: row.achievementPercent,
+        guaranteedCount: row.guaranteedPayApplied ? 1 : 0,
       },
     };
   }
